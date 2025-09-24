@@ -165,7 +165,6 @@ parser.add_argument(
     help="apply channel removal strategy",
 )
 parser.add_argument("--trigger_channel_removal_seed", default=42, type=int)
-# TODO: make it into an integer
 parser.add_argument(
     "--removed_channel_num",
     type=int,
@@ -192,32 +191,31 @@ parser.add_argument(
 )
 
 
-# TODO: consider keep or discard
+# TODO: rework
 """
 Defense Baseline: RandomDrop
 """
 parser.add_argument(
-    "--remove_random_channels",
+    "--use_randomdrop",
     action="store_true",
     help="a baseline: randomly drop out some channels",
 )
 parser.add_argument(
-    "--remove_random_channels_seed",
+    "--randomdrop_seed",
     type=int,
     default=42,
 )
 
 
-# TODO: consider keep or discard
 """
 Defense Baseline: RNP
 """
 parser.add_argument(
-    "--use_mask_pruning",
+    "--use_rnp",
     action="store_true",
     help="apply mask pruning (RNP paper)",
 )
-parser.add_argument("--mask_pruning_seed", default=42, type=int)
+parser.add_argument("--rnp_seed", default=42, type=int)
 parser.add_argument("--alpha", type=float, default=0.2)
 parser.add_argument(
     "--clean_threshold",
@@ -273,7 +271,6 @@ parser.add_argument(
 )
 
 
-# TODO: consider keep or discard
 """
 Defense Baseline: SSL-Cleanse
 """
@@ -349,7 +346,6 @@ parser.add_argument("--trigger_width", type=int, default=6)
 parser.add_argument("--trigger_location", type=float, default=0.9)
 
 
-# TODO: consider keep or discard
 """
 Defense Baseline: MIMIC
 """
@@ -371,7 +367,6 @@ parser.add_argument("--opt4", default=1000, type=int, help="opt4")
 parser.add_argument("--opt5", default=1, type=int, help="opt5")
 
 
-# TODO: consider keep or discard
 """
 Defense Baseline: BCU
 """
@@ -562,13 +557,13 @@ def main(args):
     """
     Baseline 2: Mask Pruning Strategy
     """
-    if args.use_mask_pruning:
+    if args.use_rnp:
         backbone = extract_backbone(args.method, model)
-        update_seed(args.mask_pruning_seed)
+        update_seed(args.rnp_seed)
         trainer.mask_prune(backbone, poison, trained_linear)
 
     """
-    Baseline 3: Random Channel Removal, add args.remove_random_channels
+    Baseline 3: Random Channel Removal, add args.use_randomdrop
     """
 
     """

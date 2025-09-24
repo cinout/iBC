@@ -580,7 +580,7 @@ class CLTrainer:
                 )
 
     """
-    Baseline: RNP (ICML 2023), called when args.use_mask_pruning==True
+    Baseline: RNP (ICML 2023), called when args.use_rnp==True
     """
 
     def mask_prune(self, backbone, poison, trained_linear):
@@ -953,8 +953,8 @@ class CLTrainer:
         trained_linear.eval()
 
         # Esimate poisoned triggers
-        if self.args.remove_random_channels:
-            update_seed(self.args.remove_random_channels_seed)
+        if self.args.use_randomdrop:
+            update_seed(self.args.randomdrop_seed)
             # TODO: 512, read from resnet18
             contributing_indices = torch.randperm(512)[: self.args.removed_channel_num]
         else:
@@ -1022,7 +1022,7 @@ class CLTrainer:
         memory_data_loader,
         test_data_loader,
         args,
-        k=200,  # TODO: change to 70 if the results are impacted significantly
+        k=70,  # TODO: change to 70 if the results are impacted significantly, original 200
         t=0.1,
         hide_progress=True,
         classes=-1,
