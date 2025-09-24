@@ -197,7 +197,7 @@ def find_trigger_channels(
     # find the most frequently voted channels (identified channels)
     all_votes = np.concatenate(all_votes, axis=0)  # [#dataset, n_view*take_channel]
     essential_indices = Counter(all_votes.flatten()).most_common(
-        max(args.removed_channel_num)
+        args.removed_channel_num
     )
     essential_indices = torch.tensor([idx for (idx, occ_count) in essential_indices])
     return essential_indices
@@ -312,15 +312,15 @@ def eval_linear_classifier(
         ]
     )
     with torch.no_grad():
-        if args.use_trigger_channel_removal and use_ss_detector:
-            acc1_accumulator_dict = {}
-            total_count_dict = {}
-            for k in args.removed_channel_num:
-                acc1_accumulator_dict[k] = 0.0
-                total_count_dict[k] = 0
-        else:
-            acc1_accumulator = 0.0
-            total_count = 0
+        # if args.use_ibc and use_ss_detector:
+        #     acc1_accumulator_dict = {}
+        #     total_count_dict = {}
+        #     for k in args.removed_channel_num:
+        #         acc1_accumulator_dict[k] = 0.0
+        #         total_count_dict[k] = 0
+        # else:
+        acc1_accumulator = 0.0
+        total_count = 0
 
         for i, content in enumerate(val_loader):
             if val_mode == "poison":
@@ -346,34 +346,34 @@ def eval_linear_classifier(
 
             # compute output
             output = backbone(images)
-            if args.use_trigger_channel_removal and use_ss_detector:
-                for k in args.removed_channel_num:
-                    indices_toremove = contributing_indices[0:k]
+            if args.use_ibc and use_ss_detector:
+                # for k in args.removed_channel_num:
+                indices_toremove = contributing_indices[0 : args.removed_channel_num]
 
-                    output[:, indices_toremove] = 0.0
+                output[:, indices_toremove] = 0.0
 
-                    acc1_r, total_r = produces_evaluation_results(
-                        linear,
-                        output,
-                        target,
-                        acc1_accumulator_dict[k],
-                        total_count_dict[k],
-                    )
-                    acc1_accumulator_dict[k] = acc1_r
-                    total_count_dict[k] = total_r
+                # acc1_r, total_r = produces_evaluation_results(
+                #     linear,
+                #     output,
+                #     target,
+                #     acc1_accumulator_dict[k],
+                #     total_count_dict[k],
+                # )
+                # acc1_accumulator_dict[k] = acc1_r
+                # total_count_dict[k] = total_r
 
-            else:
-                acc1_accumulator, total_count = produces_evaluation_results(
-                    linear, output, target, acc1_accumulator, total_count
-                )
+            # else:
+            acc1_accumulator, total_count = produces_evaluation_results(
+                linear, output, target, acc1_accumulator, total_count
+            )
 
-        if args.use_trigger_channel_removal and use_ss_detector:
-            results_dict = {}
-            for k in args.removed_channel_num:
-                results_dict[k] = acc1_accumulator_dict[k] / total_count_dict[k] * 100.0
-            return results_dict
-        else:
-            return acc1_accumulator / total_count * 100.0
+        # if args.use_ibc and use_ss_detector:
+        #     results_dict = {}
+        #     for k in args.removed_channel_num:
+        #         results_dict[k] = acc1_accumulator_dict[k] / total_count_dict[k] * 100.0
+        #     return results_dict
+        # else:
+        return acc1_accumulator / total_count * 100.0
 
 
 """
@@ -956,9 +956,7 @@ class CLTrainer:
         if self.args.remove_random_channels:
             update_seed(self.args.remove_random_channels_seed)
             # TODO: 512, read from resnet18
-            contributing_indices = torch.randperm(512)[
-                : max(self.args.removed_channel_num)
-            ]
+            contributing_indices = torch.randperm(512)[: self.args.removed_channel_num]
         else:
             contributing_indices = find_trigger_channels(
                 self.args,
@@ -979,10 +977,10 @@ class CLTrainer:
             use_SS_detector=True,
             contributing_indices=contributing_indices,
         )
-        for k in self.args.removed_channel_num:
-            print(
-                f"In kNN classification, by replacing top-{k} channels, clean acc: {clean_acc_SSDETECTOR[k]:.1f} | back acc: {back_acc_SSDETECTOR[k]:.1f}"
-            )
+        # for k in self.args.removed_channel_num:
+        print(
+            f"In kNN classification, by replacing top-{self.args.removed_channel_num} channels, clean acc: {clean_acc_SSDETECTOR:.1f} | back acc: {back_acc_SSDETECTOR:.1f}"
+        )
 
         ########### Linear Probe
         # Clean Validation Set
@@ -1005,17 +1003,12 @@ class CLTrainer:
             contributing_indices=contributing_indices,
         )
 
-        for k in self.args.removed_channel_num:
-            print(
-                f"In linear probe, by replacing {k} channels, the ACC on clean val is: {np.round(clean_acc1[k],1)}, the ASR on poisoned val is: {np.round(poison_acc1[k],1)}"
-            )
-
-        return (
-            clean_acc_SSDETECTOR[max(self.args.removed_channel_num)],
-            back_acc_SSDETECTOR[max(self.args.removed_channel_num)],
-            clean_acc1[max(self.args.removed_channel_num)],
-            poison_acc1[max(self.args.removed_channel_num)],
+        # for k in self.args.removed_channel_num:
+        print(
+            f"In linear probe, by replacing {self.args.removed_channel_num} channels, the ACC on clean val is: {np.round(clean_acc1,1)}, the ASR on poisoned val is: {np.round(poison_acc1,1)}"
         )
+
+        return (clean_acc_SSDETECTOR, back_acc_SSDETECTOR, clean_acc1, poison_acc1)
 
     """
     kNN classifier evaluation (label prediction).
@@ -1029,7 +1022,7 @@ class CLTrainer:
         memory_data_loader,
         test_data_loader,
         args,
-        k=200,
+        k=200,  # TODO: change to 70 if the results are impacted significantly
         t=0.1,
         hide_progress=True,
         classes=-1,
@@ -1073,14 +1066,14 @@ class CLTrainer:
         """
         Evaluate clean KNN
         """
-        if use_SS_detector:
-            clean_val_top1_dict = {}
-            clean_val_total_num_dict = {}
-            for k in args.removed_channel_num:
-                clean_val_top1_dict[k] = 0.0
-                clean_val_total_num_dict[k] = 0
-        else:
-            clean_val_top1, clean_val_total_num = 0.0, 0
+        # if use_SS_detector:
+        #     clean_val_top1_dict = {}
+        #     clean_val_total_num_dict = {}
+        #     for k in args.removed_channel_num:
+        #         clean_val_top1_dict[k] = 0.0
+        #         clean_val_total_num_dict[k] = 0
+        # else:
+        clean_val_top1, clean_val_total_num = 0.0, 0
 
         test_bar = tqdm(test_data_loader, desc="kNN", disable=hide_progress)
         for content in test_bar:
@@ -1094,43 +1087,42 @@ class CLTrainer:
                 feature = net(data)
 
             if use_SS_detector:
-                for k in args.removed_channel_num:
-                    indices_toremove = contributing_indices[0:k]
+                # for k in args.removed_channel_num:
+                indices_toremove = contributing_indices[0 : args.removed_channel_num]
+                feature[:, indices_toremove] = 0.0
 
-                    feature[:, indices_toremove] = 0.0
-                    feature = F.normalize(feature, dim=1)
-                    pred_labels = self.knn_predict(
-                        feature, feature_bank, feature_labels, classes, k, t
-                    )
-                    clean_val_total_num_dict[k] = clean_val_total_num_dict[
-                        k
-                    ] + data.size(0)
-                    clean_val_top1_dict[k] = (
-                        clean_val_top1_dict[k]
-                        + (pred_labels[:, 0] == target).float().sum().item()
-                    )
-            else:
-                feature = F.normalize(feature, dim=1)
-                # feature: [bsz, dim]
-                pred_labels = self.knn_predict(
-                    feature, feature_bank, feature_labels, classes, k, t
-                )
+            #     feature = F.normalize(feature, dim=1)
+            #     pred_labels = self.knn_predict(
+            #         feature, feature_bank, feature_labels, classes, k, t
+            #     )
+            #     clean_val_total_num_dict[k] = clean_val_total_num_dict[
+            #         k
+            #     ] + data.size(0)
+            #     clean_val_top1_dict[k] = (
+            #         clean_val_top1_dict[k]
+            #         + (pred_labels[:, 0] == target).float().sum().item()
+            #     )
+            # else:
+            feature = F.normalize(feature, dim=1)
+            pred_labels = self.knn_predict(
+                feature, feature_bank, feature_labels, classes, k, t
+            )
 
-                clean_val_total_num += data.size(0)
-                clean_val_top1 += (pred_labels[:, 0] == target).float().sum().item()
+            clean_val_total_num += data.size(0)
+            clean_val_top1 += (pred_labels[:, 0] == target).float().sum().item()
 
         """
         Evaluate poison KNN
         """
         # print(">>>>>>> now KNN evaluate for POISON val")
-        if use_SS_detector:
-            backdoor_val_top1_dict = {}
-            backdoor_val_total_num_dict = {}
-            for k in args.removed_channel_num:
-                backdoor_val_top1_dict[k] = 0.0
-                backdoor_val_total_num_dict[k] = 0
-        else:
-            backdoor_val_top1, backdoor_val_total_num = 0.0, 0
+        # if use_SS_detector:
+        #     backdoor_val_top1_dict = {}
+        #     backdoor_val_total_num_dict = {}
+        #     for k in args.removed_channel_num:
+        #         backdoor_val_top1_dict[k] = 0.0
+        #         backdoor_val_total_num_dict[k] = 0
+        # else:
+        backdoor_val_top1, backdoor_val_total_num = 0.0, 0
 
         backdoor_test_bar = tqdm(backdoor_loader, desc="kNN", disable=hide_progress)
 
@@ -1157,48 +1149,49 @@ class CLTrainer:
                 feature = net(data)
 
             if use_SS_detector:
-                for k in args.removed_channel_num:
-                    indices_toremove = contributing_indices[0:k]
+                # for k in args.removed_channel_num:
+                indices_toremove = contributing_indices[0 : args.removed_channel_num]
+                feature[:, indices_toremove] = 0.0
 
-                    feature[:, indices_toremove] = 0.0
-                    feature = F.normalize(feature, dim=1)
-                    pred_labels = self.knn_predict(
-                        feature, feature_bank, feature_labels, classes, k, t
-                    )
-                    backdoor_val_total_num_dict[k] = backdoor_val_total_num_dict[
-                        k
-                    ] + data.size(0)
-                    backdoor_val_top1_dict[k] = (
-                        backdoor_val_top1_dict[k]
-                        + (pred_labels[:, 0] == target).float().sum().item()
-                    )
-            else:
-                feature = F.normalize(feature, dim=1)
-                # feature: [bsz, dim]
-                pred_labels = self.knn_predict(
-                    feature, feature_bank, feature_labels, classes, k, t
-                )
+            #     feature = F.normalize(feature, dim=1)
+            #     pred_labels = self.knn_predict(
+            #         feature, feature_bank, feature_labels, classes, k, t
+            #     )
+            #     backdoor_val_total_num_dict[k] = backdoor_val_total_num_dict[
+            #         k
+            #     ] + data.size(0)
+            #     backdoor_val_top1_dict[k] = (
+            #         backdoor_val_top1_dict[k]
+            #         + (pred_labels[:, 0] == target).float().sum().item()
+            #     )
+            # else:
 
-                backdoor_val_total_num += data.size(0)
-                backdoor_val_top1 += (pred_labels[:, 0] == target).float().sum().item()
-
-        if use_SS_detector:
-            clean_results_dict = {}
-            backdoor_results_dict = {}
-            for k in args.removed_channel_num:
-                clean_results_dict[k] = (
-                    clean_val_top1_dict[k] / clean_val_total_num_dict[k] * 100.0
-                )
-                backdoor_results_dict[k] = (
-                    backdoor_val_top1_dict[k] / backdoor_val_total_num_dict[k] * 100.0
-                )
-            return clean_results_dict, backdoor_results_dict
-        else:
-
-            return (
-                clean_val_top1 / clean_val_total_num * 100,
-                backdoor_val_top1 / backdoor_val_total_num * 100,
+            feature = F.normalize(feature, dim=1)
+            # feature: [bsz, dim]
+            pred_labels = self.knn_predict(
+                feature, feature_bank, feature_labels, classes, k, t
             )
+
+            backdoor_val_total_num += data.size(0)
+            backdoor_val_top1 += (pred_labels[:, 0] == target).float().sum().item()
+
+        # if use_SS_detector:
+        #     clean_results_dict = {}
+        #     backdoor_results_dict = {}
+        #     for k in args.removed_channel_num:
+        #         clean_results_dict[k] = (
+        #             clean_val_top1_dict[k] / clean_val_total_num_dict[k] * 100.0
+        #         )
+        #         backdoor_results_dict[k] = (
+        #             backdoor_val_top1_dict[k] / backdoor_val_total_num_dict[k] * 100.0
+        #         )
+        #     return clean_results_dict, backdoor_results_dict
+        # else:
+
+        return (
+            clean_val_top1 / clean_val_total_num * 100,
+            backdoor_val_top1 / backdoor_val_total_num * 100,
+        )
 
     """
     Helper function for kNN classifier label prediction. Used in function knn_monitor_fre()

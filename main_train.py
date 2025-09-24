@@ -41,8 +41,11 @@ Image Size
 parser.add_argument("--window_size", default=32, type=int)
 # TODO: need to make it clear in README
 parser.add_argument(
-    "--image_size", type=int, default=32
-)  # 64 for imagenet-100, 32 for Cifar10/100
+    "--image_size",
+    type=int,
+    default=32,
+    help="64 for ImageNet-100, 32 for CIFAR-10/100",
+)
 
 """
 Batch Size
@@ -84,8 +87,6 @@ parser.add_argument("--byol-m", default=0.996, type=float)
 """
 Basics
 """
-# TODO: remove note later
-parser.add_argument("--note", type=str, default="")
 parser.add_argument(
     "--timestamp",
     type=str,
@@ -158,9 +159,8 @@ parser.add_argument(
 """
 iBC Options
 """
-# TODO: change to use_ibc
 parser.add_argument(
-    "--use_trigger_channel_removal",
+    "--use_ibc",
     action="store_true",
     help="apply channel removal strategy",
 )
@@ -168,16 +168,15 @@ parser.add_argument("--trigger_channel_removal_seed", default=42, type=int)
 # TODO: make it into an integer
 parser.add_argument(
     "--removed_channel_num",
-    nargs="+",
     type=int,
-    default=[2],
-    help="remove k channels",
+    default=70,
+    help="model-level backdoor estimation channel",
 )
 parser.add_argument(
     "--voted_channel_num",
     type=int,
-    default=4,
-    help="vote for k channels of EACH SAMPLE",
+    default=30,
+    help="view-level backdoor estimation channel",
 )
 parser.add_argument(
     "--find_channels_from_n_poison_samples",
@@ -499,7 +498,7 @@ def main(args):
     """
     Ours: Channel Voting, Estimation, and Removal Strategy
     """
-    if args.use_trigger_channel_removal:
+    if args.use_ibc:
         update_seed(args.trigger_channel_removal_seed)
         # if args.find_channels_from_n_poison_samples > 0:
 
