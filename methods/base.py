@@ -1022,7 +1022,7 @@ class CLTrainer:
         memory_data_loader,
         test_data_loader,
         args,
-        k=70,  # TODO: change to 70 if the results are impacted significantly, original 200
+        k=70,  # or 200
         t=0.1,
         hide_progress=True,
         classes=-1,
