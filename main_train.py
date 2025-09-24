@@ -418,11 +418,6 @@ def main(args):
     model = model.to(device)
 
     """
-    Construct Trainer
-    """
-    trainer = CLTrainer(args)
-
-    """
     Create Dataset/DataLoader
     """
     (
@@ -431,6 +426,11 @@ def main(args):
         memory_loader,
         train_transform,
     ) = set_aug_diff(args)
+
+    """
+    Construct Trainer
+    """
+    trainer = CLTrainer(args)
 
     """
     Create Poisoning Dataset

@@ -15,14 +15,6 @@ from PIL import ImageFilter
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-# class Subset(torch.utils.data.Subset):
-#     """Overwrite subset class to provide class methods of main class."""
-
-#     def __getattr__(self, name):
-#         """Call this only if all attributes of Subset are exhausted."""
-#         return getattr(self.dataset, name)
-
-
 def get_data_and_label(paths, size):
     images = []
     targets = []
@@ -41,21 +33,7 @@ def get_data_and_label(paths, size):
         target = torch.tensor(target, dtype=torch.long)
         targets.append(target)
 
-        # remove later
-        # if i % 200 == 0:
-        #     break
-
     return images, targets
-
-
-# def tensor_back_to_PIL(input):
-#     input = torch.permute(input, (1, 2, 0))
-#     input = input * 255.0
-#     input = torch.clamp(input, 0, 255)
-#     input = np.array(input, dtype=np.uint8)
-#     input = PIL.Image.fromarray(input)
-
-#     return input
 
 
 class NCropsTransform:
@@ -404,152 +382,7 @@ def set_aug_diff(args):
     else:
         raise ValueError(args.dataset)
 
-    ####################### Define Diff Transforms #######################
-
-    # class GaussianBlur(object):
-    #     def __call__(self, x):
-    #         sigma = np.random.uniform(0.1, 2.0)
-    #         x = x.filter(ImageFilter.GaussianBlur(radius=sigma))
-    #         return x
-
-    # if "cifar" in args.dataset or args.dataset == "imagenet100":
     if True:
-        # this is applied during training, not during poison generation
-
-        #  use different train_transform for different SSL methods
-        # if args.method == "byol":
-        #     # transform_1 = transforms.Compose(
-        #     #     [
-        #     #         aug.RandomResizedCrop(
-        #     #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #     #         ),
-        #     #         aug.RandomHorizontalFlip(),
-        #     #         RandomApply(aug.ColorJitter(0.4, 0.4, 0.2, 0.1), p=0.8),
-        #     #         aug.RandomGrayscale(p=0.2),
-
-        #     #         transforms.RandomApply(
-        #     #             [transforms.GaussianBlur(kernel_size=(3, 7))], p=1.0
-        #     #         ),
-        #     #         normalize,
-        #     #     ]
-        #     # )
-        #     # transform_2 = transforms.Compose(
-        #     #     [
-        #     #         aug.RandomResizedCrop(
-        #     #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #     #         ),
-        #     #         aug.RandomHorizontalFlip(),
-        #     #         RandomApply(aug.ColorJitter(0.4, 0.4, 0.2, 0.1), p=0.8),
-        #     #         aug.RandomGrayscale(p=0.2),
-
-        #     #         transforms.RandomApply(
-        #     #             [transforms.GaussianBlur(kernel_size=(3, 7))], p=0.1
-        #     #         ),
-        #     #         aug.RandomSolarize(p=0.2),
-        #     #         normalize,
-        #     #     ]
-        #     # )
-
-        #     transform_1 = nn.Sequential(
-        #         aug.RandomResizedCrop(
-        #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #         ),
-        #         aug.RandomHorizontalFlip(),
-        #         RandomApply(aug.ColorJitter(0.4, 0.4, 0.2, 0.1), p=0.8),
-        #         aug.RandomGrayscale(p=0.2),
-        #         aug.RandomGaussianBlur(kernel_size=3, sigma=(0.1, 2.0), p=1.0),
-        #         normalize,
-        #     )
-        #     transform_2 = nn.Sequential(
-        #         aug.RandomResizedCrop(
-        #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #         ),
-        #         aug.RandomHorizontalFlip(),
-        #         RandomApply(aug.ColorJitter(0.4, 0.4, 0.2, 0.1), p=0.8),
-        #         aug.RandomGrayscale(p=0.2),
-        #         aug.RandomGaussianBlur(kernel_size=3, sigma=(0.1, 2.0), p=0.1),
-        #         aug.RandomSolarize(p=0.2),
-        #         normalize,
-        #     )
-
-        #     train_transform = (transform_1, transform_2)
-
-        # elif args.method == "simclr":
-        #     # transform = transforms.Compose(
-        #     #     [
-        #     #         aug.RandomResizedCrop(
-        #     #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #     #         ),
-        #     #         aug.RandomHorizontalFlip(),
-        #     #         RandomApply(aug.ColorJitter(0.8, 0.8, 0.8, 0.2), p=0.8),
-        #     #         aug.RandomGrayscale(p=0.2),
-        #     #         transforms.RandomApply(
-        #     #             [transforms.GaussianBlur(kernel_size=(3, 7))], p=0.5
-        #     #         ),
-        #     #         normalize,
-        #     #     ]
-        #     # )
-
-        #     transform_1 = nn.Sequential(
-        #         aug.RandomResizedCrop(
-        #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #         ),
-        #         aug.RandomHorizontalFlip(),
-        #         RandomApply(aug.ColorJitter(0.8, 0.8, 0.8, 0.2), p=0.8),
-        #         aug.RandomGrayscale(p=0.2),
-        #         aug.RandomGaussianBlur(kernel_size=3, sigma=(0.1, 2.0), p=0.5),
-        #         normalize,
-        #     )
-        #     transform_2 = nn.Sequential(
-        #         aug.RandomResizedCrop(
-        #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #         ),
-        #         aug.RandomHorizontalFlip(),
-        #         RandomApply(aug.ColorJitter(0.8, 0.8, 0.8, 0.2), p=0.8),
-        #         aug.RandomGrayscale(p=0.2),
-        #         aug.RandomGaussianBlur(kernel_size=3, sigma=(0.1, 2.0), p=0.5),
-        #         normalize,
-        #     )
-
-        #     train_transform = (transform_1, transform_2)
-
-        # elif args.method == "mocov2":
-        #     # transform = transforms.Compose(
-        #     #     [
-        #     #         aug.RandomResizedCrop(
-        #     #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #     #         ),
-        #     #         aug.RandomHorizontalFlip(),
-        #     #         RandomApply(aug.ColorJitter(0.4, 0.4, 0.4, 0.1), p=0.8),
-        #     #         aug.RandomGrayscale(p=0.2),
-        #     #         transforms.RandomApply(
-        #     #             [transforms.GaussianBlur(kernel_size=(3, 7))], p=0.5
-        #     #         ),
-        #     #         normalize,
-        #     #     ]
-        #     # )
-
-        #     transform_1 = nn.Sequential(
-        #         aug.RandomResizedCrop(
-        #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #         ),
-        #         aug.RandomHorizontalFlip(),
-        #         RandomApply(aug.ColorJitter(0.4, 0.4, 0.4, 0.1), p=0.8),
-        #         aug.RandomGrayscale(p=0.2),
-        #         aug.RandomGaussianBlur(kernel_size=3, sigma=(0.1, 2.0), p=0.5),
-        #         normalize,
-        #     )
-        #     transform_2 = nn.Sequential(
-        #         aug.RandomResizedCrop(
-        #             size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-        #         ),
-        #         aug.RandomHorizontalFlip(),
-        #         RandomApply(aug.ColorJitter(0.4, 0.4, 0.4, 0.1), p=0.8),
-        #         aug.RandomGrayscale(p=0.2),
-        #         aug.RandomGaussianBlur(kernel_size=3, sigma=(0.1, 2.0), p=0.5),
-        #         normalize,
-        #     )
-        #     train_transform = (transform_1, transform_2)
 
         # train_transform assumes input images are already tensorized, so we use kornia.augmentation to augment images, which accepts tensoirized inputs
         train_transform = nn.Sequential(
@@ -576,9 +409,7 @@ def set_aug_diff(args):
         train_dataset = CIFAR10(
             root=args.data_path, train=True, transform=transform_load, download=True
         )
-        # ft_dataset = CIFAR10(
-        #     root=args.data_path, transform=transform_load, download=False
-        # )
+
         test_dataset = CIFAR10(
             root=args.data_path, train=False, transform=transform_load, download=True
         )
@@ -590,9 +421,7 @@ def set_aug_diff(args):
         train_dataset = CIFAR100(
             root=args.data_path, train=True, transform=transform_load, download=True
         )
-        # ft_dataset = CIFAR100(
-        #     root=args.data_path, transform=transform_load, download=False
-        # )
+
         test_dataset = CIFAR100(
             root=args.data_path, train=False, transform=transform_load, download=True
         )

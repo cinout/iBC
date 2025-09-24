@@ -393,15 +393,14 @@ class CLModel(nn.Module):
         self.arch = args.arch
         self.dataset = args.dataset
 
-        # TODO: do we need two resnet files???
-        # if "cifar" in self.dataset:
-        #     print("CIFAR-variant Resnet is loaded")
-        #     model_fun, feat_dim = model_dict_cifar[self.arch]
-        #     self.mlp_layers = 2
-        # else:
-        # print("Original Resnet is loaded")
-        model_fun, feat_dim = model_dict[self.arch]
-        self.mlp_layers = 3
+        if "cifar" in self.dataset:
+            # CIFAR-variant Resnet is loaded
+            model_fun, feat_dim = model_dict_cifar[self.arch]
+            self.mlp_layers = 2
+        else:
+            # Original Resnet is loaded
+            model_fun, feat_dim = model_dict[self.arch]
+            self.mlp_layers = 3
 
         self.model_generator = model_fun
         self.backbone = model_fun()
@@ -622,11 +621,10 @@ class CLTrainer:
             )
             unlearned_model.fc = nn.Sequential()
         else:
-            # TODO: can we merge two?
-            # if "cifar" in self.args.dataset:
-            #     model_fun, _ = model_dict_cifar[self.args.arch]
-            # else:
-            model_fun, _ = model_dict[self.args.arch]
+            if "cifar" in self.args.dataset:
+                model_fun, _ = model_dict_cifar[self.args.arch]
+            else:
+                model_fun, _ = model_dict[self.args.arch]
             unlearned_model = model_fun(norm_layer=MaskBatchNorm2d)
 
         # initialze it with the weights of unlearned model new_backbone
@@ -747,12 +745,11 @@ class CLTrainer:
     ):
         backbone.eval()
 
-        # TODO: can we merge two files????
-        # if "cifar" in self.args.dataset:
-        #     # FIXME: is this the way to dynamically get feat_dim 512?
-        #     _, feat_dim = model_dict_cifar[self.args.arch]
-        # else:
-        _, feat_dim = model_dict[self.args.arch]
+        if "cifar" in self.args.dataset:
+            # FIXME: is this the way to dynamically get feat_dim 512?
+            _, feat_dim = model_dict_cifar[self.args.arch]
+        else:
+            _, feat_dim = model_dict[self.args.arch]
 
         # initialize linear mode, including normalization module
         train_probe_feats = get_feats(
