@@ -436,20 +436,9 @@ def main(args):
     Create Poisoning Dataset
     """
     if args.trigger_type == "ftrojan":
-        # TODO: update code
-        poison_frequency_agent = PoisonFre(
-            args,
-            args.ftrojan_channel,
-            args.window_size,
-            args.trigger_position,
-            False,
-            True,
-        )
+        poison_frequency_agent = PoisonFre(args)
     elif args.trigger_type == "htba":
-        # TODO: update code
-        poison_frequency_agent = PoisonHTBA(
-            args,
-        )
+        poison_frequency_agent = PoisonHTBA(args)
 
     poison = PoisonAgent(
         args,

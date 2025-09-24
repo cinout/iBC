@@ -132,13 +132,8 @@ Return:
 
 
 def find_trigger_channels(
-    args,
-    data_loader,  # poisoned train set
-    backbone,
-    ss_transform,
+    args, data_loader, backbone, ss_transform, normalize_transform
 ):
-    # view tensor transform
-    transform = T.Compose([T.Normalize(args.mean, args.std)])
 
     # store votes information
     all_votes = []
@@ -181,7 +176,7 @@ def find_trigger_channels(
         views = views.to(device)
         bs, n_views, c, h, w = views.shape
         views = views.reshape(-1, c, h, w)  # [bs*n_views, c, h, w]
-        views = transform(views)
+        views = normalize_transform(views)
 
         with torch.no_grad():
             vision_features = backbone(views)  # [bs*n_views, 512]
@@ -208,13 +203,7 @@ Get representations from encoder
 """
 
 
-def get_feats(loader, model, args):
-    # TODO: centralize this transform = T.Compose() function
-    transform = T.Compose(
-        [
-            T.Normalize(args.mean, args.std),
-        ]
-    )
+def get_feats(loader, model, normalize_transform):
 
     model.eval()
     feats, ptr = None, 0
@@ -223,7 +212,7 @@ def get_feats(loader, model, args):
         for i, content in enumerate(loader):
             images = content[0]
             images = images.to(device)
-            images = transform(images)
+            images = normalize_transform(images)
 
             output = model(images)
 
@@ -249,24 +238,16 @@ Train the linear classifier
 
 
 def train_linear_classifier(
-    train_loader,
-    backbone,
-    linear,
-    optimizer,
-    args,
+    train_loader, backbone, linear, optimizer, normalize_transform
 ):
     backbone.eval()
     linear.train()
-    transform = T.Compose(
-        [
-            T.Normalize(args.mean, args.std),
-        ]
-    )
+
     for i, content in enumerate(train_loader):
         (images, target, _) = content
 
         images = images.to(device)
-        images = transform(images)
+        images = normalize_transform(images)
         target = target.to(device)
 
         with torch.no_grad():
@@ -304,13 +285,16 @@ Evaluate the performance of linear probing (linear classifier)
 
 
 def eval_linear_classifier(
-    val_loader, backbone, linear, args, val_mode, use_ss_detector, contributing_indices
+    val_loader,
+    backbone,
+    linear,
+    args,
+    normalize_transform,
+    val_mode,
+    use_ss_detector,
+    contributing_indices,
 ):
-    transform = T.Compose(
-        [
-            T.Normalize(args.mean, args.std),
-        ]
-    )
+
     with torch.no_grad():
         # if args.use_ibc and use_ss_detector:
         #     acc1_accumulator_dict = {}
@@ -332,7 +316,7 @@ def eval_linear_classifier(
                 raise Exception(f"unimplemented val_mode {val_mode}")
 
             images = images.to(device)
-            images = transform(images)
+            images = normalize_transform(images)
             target = target.to(device)
 
             if val_mode == "poison":
@@ -410,14 +394,14 @@ class CLModel(nn.Module):
         self.dataset = args.dataset
 
         # TODO: do we need two resnet files???
-        if "cifar" in self.dataset:
-            print("CIFAR-variant Resnet is loaded")
-            model_fun, feat_dim = model_dict_cifar[self.arch]
-            self.mlp_layers = 2
-        else:
-            print("Original Resnet is loaded")
-            model_fun, feat_dim = model_dict[self.arch]
-            self.mlp_layers = 3
+        # if "cifar" in self.dataset:
+        #     print("CIFAR-variant Resnet is loaded")
+        #     model_fun, feat_dim = model_dict_cifar[self.arch]
+        #     self.mlp_layers = 2
+        # else:
+        # print("Original Resnet is loaded")
+        model_fun, feat_dim = model_dict[self.arch]
+        self.mlp_layers = 3
 
         self.model_generator = model_fun
         self.backbone = model_fun()
@@ -435,6 +419,11 @@ class CLTrainer:
     def __init__(self, args):
         self.args = args
         self.args.warmup_epoch = 10
+        self.normalize_transform = T.Compose(
+            [
+                T.Normalize(args.mean, args.std),
+            ]
+        )
 
     # TODO: move all these baselines to their separate files
     """
@@ -633,10 +622,11 @@ class CLTrainer:
             )
             unlearned_model.fc = nn.Sequential()
         else:
-            if "cifar" in self.args.dataset or "gtsrb" in self.args.dataset:
-                model_fun, _ = model_dict_cifar[self.args.arch]
-            else:
-                model_fun, _ = model_dict[self.args.arch]
+            # TODO: can we merge two?
+            # if "cifar" in self.args.dataset:
+            #     model_fun, _ = model_dict_cifar[self.args.arch]
+            # else:
+            model_fun, _ = model_dict[self.args.arch]
             unlearned_model = model_fun(norm_layer=MaskBatchNorm2d)
 
         # initialze it with the weights of unlearned model new_backbone
@@ -758,15 +748,15 @@ class CLTrainer:
         backbone.eval()
 
         # TODO: can we merge two files????
-        if "cifar" in self.args.dataset:
-            # FIXME: is this the way to dynamically get feat_dim 512?
-            _, feat_dim = model_dict_cifar[self.args.arch]
-        else:
-            _, feat_dim = model_dict[self.args.arch]
+        # if "cifar" in self.args.dataset:
+        #     # FIXME: is this the way to dynamically get feat_dim 512?
+        #     _, feat_dim = model_dict_cifar[self.args.arch]
+        # else:
+        _, feat_dim = model_dict[self.args.arch]
 
         # initialize linear mode, including normalization module
         train_probe_feats = get_feats(
-            poison.train_probe_loader, backbone, self.args
+            poison.train_probe_loader, backbone, self.normalize_transform
         )  # shape: [N, D]
         train_var, train_mean = torch.var_mean(train_probe_feats, dim=0)
         linear = nn.Sequential(
@@ -804,7 +794,7 @@ class CLTrainer:
                     backbone,
                     linear,
                     optimizer,
-                    self.args,
+                    self.normalize_transform,
                 )
                 lr_scheduler.step()
 
@@ -821,6 +811,7 @@ class CLTrainer:
             backbone,
             linear,
             self.args,
+            self.normalize_transform,
             val_mode="clean",
             use_ss_detector=False,
             contributing_indices=None,
@@ -830,6 +821,7 @@ class CLTrainer:
             backbone,
             linear,
             self.args,
+            self.normalize_transform,
             val_mode="poison",
             use_ss_detector=False,
             contributing_indices=None,
@@ -963,6 +955,7 @@ class CLTrainer:
                 poison.train_pos_loader,  # poisoned training set
                 backbone,
                 poison.ss_transform,
+                self.normalize_transform,
             )
         print(f"predicted trigger channels are: {contributing_indices}")
 
@@ -977,7 +970,7 @@ class CLTrainer:
             use_SS_detector=True,
             contributing_indices=contributing_indices,
         )
-        # for k in self.args.removed_channel_num:
+
         print(
             f"In kNN classification, by replacing top-{self.args.removed_channel_num} channels, clean acc: {clean_acc_SSDETECTOR:.1f} | back acc: {back_acc_SSDETECTOR:.1f}"
         )
@@ -989,6 +982,7 @@ class CLTrainer:
             backbone,
             trained_linear,
             self.args,
+            self.normalize_transform,
             val_mode="clean",
             use_ss_detector=True,
             contributing_indices=contributing_indices,
@@ -998,12 +992,12 @@ class CLTrainer:
             backbone,
             trained_linear,
             self.args,
+            self.normalize_transform,
             val_mode="poison",
             use_ss_detector=True,
             contributing_indices=contributing_indices,
         )
 
-        # for k in self.args.removed_channel_num:
         print(
             f"In linear probe, by replacing {self.args.removed_channel_num} channels, the ACC on clean val is: {np.round(clean_acc1,1)}, the ASR on poisoned val is: {np.round(poison_acc1,1)}"
         )
@@ -1030,11 +1024,6 @@ class CLTrainer:
         use_SS_detector=False,
         contributing_indices=None,
     ):
-        transform = T.Compose(
-            [
-                T.Normalize(args.mean, args.std),
-            ]
-        )
 
         net.eval()
 
@@ -1047,7 +1036,7 @@ class CLTrainer:
             disable=hide_progress,
         ):
             data = data.to(device)
-            data = transform(data)
+            data = self.normalize_transform(data)
 
             with torch.no_grad():
                 feature = net(data)
@@ -1066,13 +1055,7 @@ class CLTrainer:
         """
         Evaluate clean KNN
         """
-        # if use_SS_detector:
-        #     clean_val_top1_dict = {}
-        #     clean_val_total_num_dict = {}
-        #     for k in args.removed_channel_num:
-        #         clean_val_top1_dict[k] = 0.0
-        #         clean_val_total_num_dict[k] = 0
-        # else:
+
         clean_val_top1, clean_val_total_num = 0.0, 0
 
         test_bar = tqdm(test_data_loader, desc="kNN", disable=hide_progress)
@@ -1081,28 +1064,16 @@ class CLTrainer:
             (data, target, _) = content
 
             data, target = data.to(device), target.to(device)
-            data = transform(data)
+            data = self.normalize_transform(data)
 
             with torch.no_grad():
                 feature = net(data)
 
             if use_SS_detector:
-                # for k in args.removed_channel_num:
+
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
                 feature[:, indices_toremove] = 0.0
 
-            #     feature = F.normalize(feature, dim=1)
-            #     pred_labels = self.knn_predict(
-            #         feature, feature_bank, feature_labels, classes, k, t
-            #     )
-            #     clean_val_total_num_dict[k] = clean_val_total_num_dict[
-            #         k
-            #     ] + data.size(0)
-            #     clean_val_top1_dict[k] = (
-            #         clean_val_top1_dict[k]
-            #         + (pred_labels[:, 0] == target).float().sum().item()
-            #     )
-            # else:
             feature = F.normalize(feature, dim=1)
             pred_labels = self.knn_predict(
                 feature, feature_bank, feature_labels, classes, k, t
@@ -1114,14 +1085,7 @@ class CLTrainer:
         """
         Evaluate poison KNN
         """
-        # print(">>>>>>> now KNN evaluate for POISON val")
-        # if use_SS_detector:
-        #     backdoor_val_top1_dict = {}
-        #     backdoor_val_total_num_dict = {}
-        #     for k in args.removed_channel_num:
-        #         backdoor_val_top1_dict[k] = 0.0
-        #         backdoor_val_total_num_dict[k] = 0
-        # else:
+
         backdoor_val_top1, backdoor_val_total_num = 0.0, 0
 
         backdoor_test_bar = tqdm(backdoor_loader, desc="kNN", disable=hide_progress)
@@ -1135,7 +1099,7 @@ class CLTrainer:
                 original_label.to(device),
             )
 
-            data = transform(data)
+            data = self.normalize_transform(data)
 
             valid_indices = original_label != args.target_class
             if torch.all(~valid_indices):
@@ -1149,22 +1113,9 @@ class CLTrainer:
                 feature = net(data)
 
             if use_SS_detector:
-                # for k in args.removed_channel_num:
+
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
                 feature[:, indices_toremove] = 0.0
-
-            #     feature = F.normalize(feature, dim=1)
-            #     pred_labels = self.knn_predict(
-            #         feature, feature_bank, feature_labels, classes, k, t
-            #     )
-            #     backdoor_val_total_num_dict[k] = backdoor_val_total_num_dict[
-            #         k
-            #     ] + data.size(0)
-            #     backdoor_val_top1_dict[k] = (
-            #         backdoor_val_top1_dict[k]
-            #         + (pred_labels[:, 0] == target).float().sum().item()
-            #     )
-            # else:
 
             feature = F.normalize(feature, dim=1)
             # feature: [bsz, dim]
@@ -1174,19 +1125,6 @@ class CLTrainer:
 
             backdoor_val_total_num += data.size(0)
             backdoor_val_top1 += (pred_labels[:, 0] == target).float().sum().item()
-
-        # if use_SS_detector:
-        #     clean_results_dict = {}
-        #     backdoor_results_dict = {}
-        #     for k in args.removed_channel_num:
-        #         clean_results_dict[k] = (
-        #             clean_val_top1_dict[k] / clean_val_total_num_dict[k] * 100.0
-        #         )
-        #         backdoor_results_dict[k] = (
-        #             backdoor_val_top1_dict[k] / backdoor_val_total_num_dict[k] * 100.0
-        #         )
-        #     return clean_results_dict, backdoor_results_dict
-        # else:
 
         return (
             clean_val_top1 / clean_val_total_num * 100,

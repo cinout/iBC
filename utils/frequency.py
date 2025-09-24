@@ -2,11 +2,6 @@ import torch
 import torch.nn as nn
 import kornia
 import numpy as np
-import cv2
-import scipy.fftpack as fftpack
-from utils.image import poison_frequency, DCT, IDCT
-from PIL import Image, ImageFilter
-import torchvision.transforms as transforms
 from pytorch_wavelets import DWTForward, DWTInverse
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -252,19 +247,16 @@ class PoisonFre:
     def __init__(
         self,
         args,
-        channel_list,  # 1 2
-        window_size,  # 32
-        pos_list,  # 15 31
         lindct=False,
-        rgb2yuv=False,  # set to True
+        rgb2yuv=True,
     ):
 
         self.args = args
-        self.channel_list = channel_list
-        self.window_size = window_size
+        self.channel_list = args.ftrojan_channel
+        self.window_size = args.window_size
         self.pos_list = [
-            (pos_list[0], pos_list[0]),
-            (pos_list[1], pos_list[1]),
+            (args.trigger_position[0], args.trigger_position[0]),
+            (args.trigger_position[1], args.trigger_position[1]),
         ]  # [(15,15),(31,31)]
 
         self.lindct = lindct  # False
@@ -461,42 +453,6 @@ class PoisonFre:
         x_train = torch.clamp(x_train, min=0.0, max=1.0)
 
         return x_train, y_train
-
-    # NOT used anywhere
-    def Poison_Celan_Label(
-        self, x_train, y_train, target_class, poison_ratio, pos_list, magnitude
-    ):
-        poison_num = int(poison_ratio * x_train.shape[0])
-        index = np.where(y_train == target_class)[0]
-        index = index[:poison_num]
-        x_train[index], y_train[index] = self.Poison_Frequency(
-            x_train[index], y_train[index], pos_list, magnitude
-        )
-
-        return x_train, index
-
-    # NOT used anywhere
-    def Poison_Celan_Label_Diff(
-        self,
-        x_train,
-        y_train,
-        target_class,
-        poison_ratio,
-        magnitude,
-        dwt=False,
-        part=True,
-    ):
-        poison_num = int(poison_ratio * x_train.shape[0])
-        index = np.where(y_train == target_class)[0]
-        if part:
-            index = index[:poison_num]
-        x_train[index], y_train[index] = self.Poison_Frequency_Diff(
-            x_train[index], y_train[index], magnitude, dwt
-        )
-
-        return x_train, index
-
-    #
 
 
 class linearRegression(torch.nn.Module):
