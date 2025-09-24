@@ -11,7 +11,7 @@
 ###SBATCH --qos=gpgpudeeplearn
 ###SBATCH --constraint=dlg4|dlg5|dlg6
 
-#SBATCH --job-name="img_h"
+#SBATCH --job-name="img_f"
 #SBATCH --account=punim1623
 #SBATCH --time=0-00:04:00
 
@@ -35,8 +35,7 @@ eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 python -u main_train.py \
-    --method mocov2 \
-    --trigger_type htba \
+    --method byol \
     \
     --image_size 64 \
     \
@@ -50,10 +49,8 @@ python -u main_train.py \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    --pretrained_ssl_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/last.pth.tar" \
-    --pretrained_linear_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/linear.pth.tar" \
-
-
+    --pretrained_ssl_model "./Experiments/imagenet100_ftrojan_byol_ref_set_sd42/last.pth.tar" \
+    --pretrained_linear_model "./Experiments/imagenet100_ftrojan_byol_ref_set_sd42/linear.pth.tar" \
     
 
 ##Log this job's resource usage stats###

@@ -35,7 +35,7 @@ eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 python -u main_train.py \
-    --method mocov2 \
+    --method simclr \
     --trigger_type htba \
     \
     --image_size 64 \
@@ -50,8 +50,9 @@ python -u main_train.py \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    --pretrained_ssl_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/last.pth.tar" \
-    --pretrained_linear_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/linear.pth.tar" \
+    --pretrained_ssl_model "./Experiments/imagenet100_htba_simclr_ref_set_sd42/last.pth.tar" \
+    --pretrained_linear_model "./Experiments/imagenet100_htba_simclr_ref_set_sd42/linear.pth.tar" \
+
 
 
     
