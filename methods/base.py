@@ -1013,7 +1013,7 @@ class CLTrainer:
         memory_data_loader,
         test_data_loader,
         args,
-        k=70,  # or 200
+        k=200,  # or 200
         t=0.1,
         hide_progress=True,
         classes=-1,
