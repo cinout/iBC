@@ -35,8 +35,6 @@ share/python-wheels/
 *.egg
 MANIFEST
 HTBA_trigger*/
-dataset/
-datasets/
 archive/
 
 # PyInstaller

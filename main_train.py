@@ -39,7 +39,6 @@ parser.add_argument(
 Image Size
 """
 parser.add_argument("--window_size", default=32, type=int)
-# TODO: need to make it clear in README
 parser.add_argument(
     "--image_size",
     type=int,
@@ -435,18 +434,16 @@ def main(args):
     Create Poisoning Dataset
     """
     if args.trigger_type == "ftrojan":
-        poison_frequency_agent = PoisonFre(args)
+        poison_agent = PoisonFre(args)
     elif args.trigger_type == "htba":
-        poison_frequency_agent = PoisonHTBA(args)
+        poison_agent = PoisonHTBA(args)
 
     poison = PoisonAgent(
         args,
-        poison_frequency_agent,
+        poison_agent,
         train_dataset,
         test_dataset,
         memory_loader,
-        args.magnitude_train,
-        args.magnitude_val,
     )
 
     """
@@ -473,12 +470,7 @@ def main(args):
     trained_linear = trainer.linear_probing(backbone, poison)
 
     """
-    DEFENSE OPTIONS
-    """
-    # TODO: purt each defense into their own folder/file
-
-    """
-    Ours: Channel Voting, Estimation, and Removal Strategy
+    iBC Defense
     """
     if args.use_ibc:
         update_seed(args.trigger_channel_removal_seed)

@@ -58,8 +58,6 @@ class PoisonAgent:
         trainset,
         validset,
         memory_loader,
-        magnitude_train,
-        magnitude_val,
     ):
         self.args = args
         self.trainset = trainset
@@ -70,8 +68,8 @@ class PoisonAgent:
         )  #  determine how many to be poisoned
         self.fre_poison_agent = fre_agent  # who does the poisoning work
 
-        self.magnitude_train = magnitude_train
-        self.magnitude_val = magnitude_val
+        self.magnitude_train = args.magnitude_train
+        self.magnitude_val = args.magnitude_val
 
         ss_views_aug = [
             transforms.RandomResizedCrop(
@@ -191,7 +189,6 @@ class PoisonAgent:
         poison_index = poison_index[: self.poison_num]
 
         if self.args.trigger_type == "ftrojan":
-
             x_train_tensor[poison_index], y_train_tensor[poison_index] = (
                 self.fre_poison_agent.Poison_Frequency_Diff(
                     x_train_tensor[poison_index],

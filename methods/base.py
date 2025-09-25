@@ -330,27 +330,10 @@ def eval_linear_classifier(
 
                 output[:, indices_toremove] = 0.0
 
-                # acc1_r, total_r = produces_evaluation_results(
-                #     linear,
-                #     output,
-                #     target,
-                #     acc1_accumulator_dict[k],
-                #     total_count_dict[k],
-                # )
-                # acc1_accumulator_dict[k] = acc1_r
-                # total_count_dict[k] = total_r
-
-            # else:
             acc1_accumulator, total_count = produces_evaluation_results(
                 linear, output, target, acc1_accumulator, total_count
             )
 
-        # if args.use_ibc and use_ss_detector:
-        #     results_dict = {}
-        #     for k in args.removed_channel_num:
-        #         results_dict[k] = acc1_accumulator_dict[k] / total_count_dict[k] * 100.0
-        #     return results_dict
-        # else:
         return acc1_accumulator / total_count * 100.0
 
 
@@ -418,7 +401,6 @@ class CLTrainer:
             ]
         )
 
-    # TODO: move all these baselines to their separate files
     """
     Baseline: BCU (Backdoor Cleansing with Unlabeled Data, CVPR 2023)
     """
