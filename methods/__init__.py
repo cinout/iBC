@@ -13,7 +13,7 @@ def set_model(args):
         return MoCo(
             models.__dict__[args.arch],
             args,
-            dim=512,  # FIXME: 512, read from resnet18
+            dim=512,  # TODO: 512, read from resnet18
             K=65536,
             m=0.999,
             contr_tau=0.2,

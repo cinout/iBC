@@ -722,7 +722,7 @@ class CLTrainer:
         backbone.eval()
 
         if "cifar" in self.args.dataset:
-            # FIXME: is this the way to dynamically get feat_dim 512?
+            # TODO:  dynamically get feat_dim 512?
             _, feat_dim = model_dict_cifar[self.args.arch]
         else:
             _, feat_dim = model_dict[self.args.arch]
