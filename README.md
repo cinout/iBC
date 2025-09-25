@@ -21,7 +21,7 @@ create folder ./datasets
 CIFAR-10/100: automatically downloads
 ImageNet:
 
-- download ImageNet-100????
+- download ImageNet-1k dataset
 - create imagenet100_train_clean_filelist.txt and imagenet100_val_clean_filelist.txt in datasets/ folder, each row should be in the format "ABS_PATH class"
 - follow https://github.com/UMBCvision/SSL-Backdoor?tab=readme-ov-file?
 -
