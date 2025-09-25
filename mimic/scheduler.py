@@ -2,7 +2,6 @@ import torch
 from tqdm import tqdm
 import numpy as np
 import math
-from torch import nn
 from mimic.DV import DV
 from mimic.HookTool import get_feas_by_hook
 from mimic.TNet import TNet

@@ -75,12 +75,6 @@ def mimic_model_train(
         v1 = train_transform(images)
         v2 = train_transform(images)
 
-        # feature_1 & feature_3: flattneed and normalized BACKBONE output from v1, using student & teacher,
-        ## out_1 & out_2: flattened and normalized projector output from student, v1 and v2 separately
-        # feature_1, out_1 = snet(v1)
-        # _, out_2 = snet(v2)
-        # feature_3, _ = tnet(v1)
-
         student_proj_out = snet(v1, v2)
         teacher_proj_out = tnet(v1, v2)
 
@@ -104,22 +98,6 @@ def mimic_model_train(
             conloss = snet.negcos(*student_proj_out)
         elif args.method == "mocov2":
             conloss = snet.loss(*student_proj_out)
-
-        # out = torch.cat([out_1, out_2], dim=0)  # [2*B, D]
-        # # [2*B, 2*B]
-        # sim_matrix = torch.exp(torch.mm(out, out.t().contiguous()) / args.knn_t)
-        # mask = (
-        #     torch.ones_like(sim_matrix)
-        #     - torch.eye(2 * args.mimic_batch_size, device=sim_matrix.device)
-        # ).bool()
-        # # [2*B, 2*B-1]
-        # sim_matrix = sim_matrix.masked_select(mask).view(2 * args.mimic_batch_size, -1)
-
-        # # SSL loss
-        # pos_sim = torch.exp(torch.sum(out_1 * out_2, dim=-1) / args.knn_t)
-        # # [2*B]
-        # pos_sim = torch.cat([pos_sim, pos_sim], dim=0)
-        # conloss = (-torch.log(pos_sim / sim_matrix.sum(dim=-1))).mean()
 
         # Distillation loss
         cloneloss = -torch.sum(feature_3 * feature_1, dim=-1).mean()
@@ -150,38 +128,6 @@ def mimic_model_train(
             criterionAT(student_layer1_featmap, teacher_layer1_featmap.detach())
             * args.opt1
         )
-
-        # tnet_train_list = []
-        # for name, module in tnet.f.f._modules.items():
-        #     if name == "0":
-        #         # conv1, store its output
-        #         tnet_train_list.append(module(v1))
-        #     else:
-        #         # recursively store each module's output
-        #         tnet_train_list.append(module(tnet_train_list[int(name) - 1]))
-        # # for the last module, normalize it
-        # tnet_train_list[-1] = F.normalize(tnet_train_list[-1], dim=-1)
-
-        # snet_train_list = []
-        # for name, module in snet.f.f._modules.items():
-        #     if name == "0":
-        #         snet_train_list.append(module(v1))
-        #     else:
-        #         snet_train_list.append(module(snet_train_list[int(name) - 1]))
-        # snet_train_list[-1] = F.normalize(snet_train_list[-1], dim=-1)
-
-        # at4_loss = (
-        #     criterionAT(snet_train_list[6], tnet_train_list[6].detach()) * args.opt4
-        # )
-        # at3_loss = (
-        #     criterionAT(snet_train_list[5], tnet_train_list[5].detach()) * args.opt3
-        # )
-        # at2_loss = (
-        #     criterionAT(snet_train_list[4], tnet_train_list[4].detach()) * args.opt2
-        # )
-        # at1_loss = (
-        #     criterionAT(snet_train_list[3], tnet_train_list[3].detach()) * args.opt1
-        # )
 
         # SUM of Losses
         loss = (

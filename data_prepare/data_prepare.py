@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader, TensorDataset
-import random, os
+import random
 import numpy as np
 from PIL import Image
 from torch import Tensor
@@ -9,8 +9,6 @@ import torch.nn as nn
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from kornia import augmentation as aug
-import PIL
-from PIL import ImageFilter
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -84,13 +82,13 @@ class PoisonAgent:
             transforms.RandomPerspective(p=0.5),
         ]
 
-        # used in find_trigger_channels_or_poisoned_images. for augment an image into multiple views, and finding trigger channels
+        # for spectral signature step
         self.ss_transform = NCropsTransform(
             transforms.Compose(ss_views_aug), self.args.num_views
         )
 
         print(
-            f"Initializing Poison data (chosen images, examples, sources, labels) with random seed {self.args.ssl_pretrain_seed}"
+            f"Initializing Poison data with random seed {self.args.ssl_pretrain_seed}"
         )
 
         (
@@ -106,40 +104,27 @@ class PoisonAgent:
         basic data manipulation
         """
         if self.args.dataset == "imagenet100":
-            ###### NOTICE: quick_fetch_tensors_imagenet100_XXX.pth are generated with SD42 and should be used with SSL poisoned model with SD42
-            # TODO: handle this quickfetch
-            if os.path.exists(
-                f"quick_fetch_tensors_imagenet100_{self.args.trigger_type}.pth"
-            ):
-                # tensors are saved to local disk already
-                pass
-            else:
+            train_paths = self.trainset
+            val_paths = self.validset
 
-                train_paths = self.trainset
-                val_paths = self.validset
+            print("transform training data")
+            x_train_tensor, y_train_tensor = get_data_and_label(
+                train_paths, self.args.image_size
+            )
+            x_train_tensor = torch.stack(x_train_tensor)
+            y_train_tensor = torch.stack(y_train_tensor)
 
-                print("transform training data")
+            print("transform validation data")
+            x_test_tensor, y_test_tensor = get_data_and_label(
+                val_paths, self.args.image_size
+            )
 
-                x_train_tensor, y_train_tensor = get_data_and_label(
-                    train_paths, self.args.image_size
-                )
+            x_test_tensor = torch.stack(x_test_tensor)
+            y_test_tensor = torch.stack(y_test_tensor)
 
-                x_train_tensor = torch.stack(x_train_tensor)
-                y_train_tensor = torch.stack(y_train_tensor)
-
-                print("transform validation data")
-
-                x_test_tensor, y_test_tensor = get_data_and_label(
-                    val_paths, self.args.image_size
-                )
-
-                x_test_tensor = torch.stack(x_test_tensor)
-                y_test_tensor = torch.stack(y_test_tensor)
-
-                # memory
-
-                x_memory_tensor = x_train_tensor.clone().detach()
-                y_memory_tensor = y_train_tensor.clone().detach()
+            # memory
+            x_memory_tensor = x_train_tensor.clone().detach()
+            y_memory_tensor = y_train_tensor.clone().detach()
 
         else:
             # CIFAR-10/100
@@ -176,87 +161,51 @@ class PoisonAgent:
             x_memory_tensor = x_memory_tensor.permute(0, 3, 1, 2)
 
         """
-        # POISONed Validation Set
+        # Poisoned Validation Set
         """
-        if self.args.dataset == "imagenet100" and os.path.exists(
-            f"quick_fetch_tensors_imagenet100_{self.args.trigger_type}.pth"
-        ):
-            pass
-        else:
-            # test set (poison all images)
-            if self.args.trigger_type == "ftrojan":
-                x_test_pos_tensor, y_test_pos_tensor = (
-                    self.fre_poison_agent.Poison_Frequency_Diff(
-                        x_test_tensor.clone().detach(),
-                        y_test_tensor.clone().detach(),
-                        self.magnitude_val,
-                    )
+        # test set (poison all images)
+        if self.args.trigger_type == "ftrojan":
+            x_test_pos_tensor, y_test_pos_tensor = (
+                self.fre_poison_agent.Poison_Frequency_Diff(
+                    x_test_tensor.clone().detach(),
+                    y_test_tensor.clone().detach(),
+                    self.magnitude_val,
                 )
-            elif self.args.trigger_type == "htba":
-                x_test_pos_tensor, y_test_pos_tensor = (
-                    self.fre_poison_agent.Poison_HTBA(
-                        x_test_tensor.clone().detach(),
-                        y_test_tensor.clone().detach(),
-                    )
-                )
-
-            # why? is it because above code does not assign correct label to poisoned images?
-            # [YES], the Poison_Frequency_Diff() function only poisons image data, but does not pollute label.
-            y_test_pos_tensor = (
-                torch.ones_like(y_test_pos_tensor, dtype=torch.long)
-                * self.args.target_class
+            )
+        elif self.args.trigger_type == "htba":
+            x_test_pos_tensor, y_test_pos_tensor = self.fre_poison_agent.Poison_HTBA(
+                x_test_tensor.clone().detach(),
+                y_test_tensor.clone().detach(),
             )
 
-            # uncomment to show poisoned image example
-            # tensor_back_to_PIL(x_test_pos_tensor[0])
+        # assign correct label to poisoned images, as the Poison_Frequency_Diff() function only poisons image data, but does not pollute label
+        y_test_pos_tensor = (
+            torch.ones_like(y_test_pos_tensor, dtype=torch.long)
+            * self.args.target_class
+        )
 
         """
-        # POISONed Train Set (for stage 1 attack)
+        # Poisoned Train Set (poison only a portion of train images)
         """
-        if self.args.dataset == "imagenet100" and os.path.exists(
-            f"quick_fetch_tensors_imagenet100_{self.args.trigger_type}.pth"
-        ):
-            pass
-        else:
-            poison_index = torch.where(y_train_tensor == self.args.target_class)[0]
-            poison_index = poison_index[: self.poison_num]
+        poison_index = torch.where(y_train_tensor == self.args.target_class)[0]
+        poison_index = poison_index[: self.poison_num]
 
-            # train set (poison only a portion of train images)
-            if self.args.trigger_type == "ftrojan":
+        if self.args.trigger_type == "ftrojan":
 
-                x_train_tensor[poison_index], y_train_tensor[poison_index] = (
-                    self.fre_poison_agent.Poison_Frequency_Diff(
-                        x_train_tensor[poison_index],
-                        y_train_tensor[poison_index],
-                        self.magnitude_train,
-                    )
+            x_train_tensor[poison_index], y_train_tensor[poison_index] = (
+                self.fre_poison_agent.Poison_Frequency_Diff(
+                    x_train_tensor[poison_index],
+                    y_train_tensor[poison_index],
+                    self.magnitude_train,
                 )
-            elif self.args.trigger_type == "htba":
-                x_train_tensor[poison_index], y_train_tensor[poison_index] = (
-                    self.fre_poison_agent.Poison_HTBA(
-                        x_train_tensor[poison_index],
-                        y_train_tensor[poison_index],
-                    )
-                )
-
-        # for convenience (saved in disk)
-        if self.args.dataset == "imagenet100" and os.path.exists(
-            f"quick_fetch_tensors_imagenet100_{self.args.trigger_type}.pth"
-        ):
-            tensor_dict = torch.load(
-                f"quick_fetch_tensors_imagenet100_{self.args.trigger_type}.pth",
-                # map_location=device,
             )
-
-            x_train_tensor = tensor_dict["x_train_tensor"]
-            y_train_tensor = tensor_dict["y_train_tensor"]
-            x_test_tensor = tensor_dict["x_test_tensor"]
-            y_test_tensor = tensor_dict["y_test_tensor"]
-            x_test_pos_tensor = tensor_dict["x_test_pos_tensor"]
-            y_test_pos_tensor = tensor_dict["y_test_pos_tensor"]
-            x_memory_tensor = tensor_dict["x_memory_tensor"]
-            y_memory_tensor = tensor_dict["y_memory_tensor"]
-            poison_index = tensor_dict["poison_index"]
+        elif self.args.trigger_type == "htba":
+            x_train_tensor[poison_index], y_train_tensor[poison_index] = (
+                self.fre_poison_agent.Poison_HTBA(
+                    x_train_tensor[poison_index],
+                    y_train_tensor[poison_index],
+                )
+            )
 
         """
         Create dataloaders
@@ -264,12 +213,12 @@ class PoisonAgent:
         train_is_poisoned = torch.zeros_like(y_train_tensor)
         train_is_poisoned[poison_index] = 1
 
-        # for image indexing, used for input-filtering methods
+        # TODO: can be removed. for image indexing, used for input-filtering methods
         train_index = torch.tensor(list(range(len(self.trainset))), dtype=torch.long)
         test_index = torch.tensor(list(range(len(self.validset))), dtype=torch.long)
         memory_index = torch.tensor(list(range(len(x_memory_tensor))), dtype=torch.long)
 
-        # contain both CLEAN and a portion of POISONED images
+        # contain both CLEAN and a portion of poisoned images
         train_loader = DataLoader(
             (
                 TensorDataset(
@@ -284,14 +233,14 @@ class PoisonAgent:
             shuffle=True,
         )
 
-        # clean validation set (used in knn eval only, in base.py)
+        # clean validation set
         test_clean_loader = DataLoader(
             TensorDataset(x_test_tensor, y_test_tensor, test_index),
             batch_size=self.args.linear_probe_batch_size,
             shuffle=False,
         )
 
-        # poisoned validation set (used in knn eval only, in base.py)
+        # poisoned validation set
         test_pos_loader = DataLoader(
             TensorDataset(
                 x_test_pos_tensor, y_test_pos_tensor, y_test_tensor, test_index
@@ -300,14 +249,14 @@ class PoisonAgent:
             shuffle=False,
         )
 
-        # memory set is never poisoned (used in knn eval only, in base.py)
+        # memory set is clean
         memory_loader = DataLoader(
             TensorDataset(x_memory_tensor, y_memory_tensor, memory_index),
             batch_size=self.args.linear_probe_batch_size,
             shuffle=False,
         )
 
-        # create 1% train probe set for linear classifier training
+        # create 1% train probe (reference) set
         id_and_label = dict()  # choose 1% images for each label to achieve balance
         for i, label in enumerate(y_memory_tensor.cpu().detach().numpy()):
             if label in id_and_label.keys():
@@ -330,7 +279,6 @@ class PoisonAgent:
         probe_index = torch.tensor(
             list(range(len(x_probe_tensor))), dtype=torch.long
         )  # indexed based on x_probe_tensor, not on the whole trainset
-
         train_probe_loader = DataLoader(
             TensorDataset(x_probe_tensor, y_probe_tensor, probe_index),
             batch_size=self.args.linear_probe_batch_size,
@@ -341,8 +289,8 @@ class PoisonAgent:
             train_loader,
             test_clean_loader,
             test_pos_loader,
-            memory_loader,  # for kNN eval
-            train_probe_loader,  # 1% clean images
+            memory_loader,  # for kNN classifier
+            train_probe_loader,  # for linear classifier and baselines
         )
 
 
@@ -363,15 +311,12 @@ def set_aug_diff(args):
         args.mean = mean
         args.std = std
         args.num_classes = 10
-
     elif args.dataset == "cifar100":
         mean = (0.5071, 0.4867, 0.4408)
         std = (0.2675, 0.2565, 0.2761)
         args.mean = mean
         args.std = std
         args.num_classes = 100
-
-    # used for imagenet100
     elif args.dataset == "imagenet100":
         mean = (0.485, 0.456, 0.406)
         std = (0.229, 0.224, 0.225)
@@ -382,51 +327,40 @@ def set_aug_diff(args):
     else:
         raise ValueError(args.dataset)
 
-    if True:
-
-        # train_transform assumes input images are already tensorized, so we use kornia.augmentation to augment images, which accepts tensoirized inputs
-        train_transform = nn.Sequential(
-            aug.RandomResizedCrop(
-                size=(args.image_size, args.image_size), scale=(0.2, 1.0)
-            ),
-            aug.RandomHorizontalFlip(),
-            RandomApply(aug.ColorJitter(0.4, 0.4, 0.4, 0.1), p=0.8),
-            aug.RandomGrayscale(p=0.2),
-            aug.Normalize(mean=mean, std=std),
-        )
-
-        # applied to a PIL image (NEVER used?)
-        transform_load = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(mean, std)]  # arrive here
-        )
-
-    else:
-        raise NotImplementedError
+    # train_transform assumes input images are already tensorized, so we use kornia.augmentation to augment images, which accepts tensoirized inputs
+    train_transform = nn.Sequential(
+        aug.RandomResizedCrop(
+            size=(args.image_size, args.image_size), scale=(0.2, 1.0)
+        ),
+        aug.RandomHorizontalFlip(),
+        RandomApply(aug.ColorJitter(0.4, 0.4, 0.4, 0.1), p=0.8),
+        aug.RandomGrayscale(p=0.2),
+        aug.Normalize(mean=mean, std=std),
+    )
 
     ####################### Define Datasets #######################
     if args.dataset == "cifar10":
 
         train_dataset = CIFAR10(
-            root=args.data_path, train=True, transform=transform_load, download=True
+            root=args.data_path, train=True, transform=None, download=True
         )
-
         test_dataset = CIFAR10(
-            root=args.data_path, train=False, transform=transform_load, download=True
+            root=args.data_path, train=False, transform=None, download=True
         )
         memory_dataset = CIFAR10(
-            root=args.data_path, train=True, transform=transform_load, download=False
+            root=args.data_path, train=True, transform=None, download=False
         )
 
     elif args.dataset == "cifar100":
         train_dataset = CIFAR100(
-            root=args.data_path, train=True, transform=transform_load, download=True
+            root=args.data_path, train=True, transform=None, download=True
         )
 
         test_dataset = CIFAR100(
-            root=args.data_path, train=False, transform=transform_load, download=True
+            root=args.data_path, train=False, transform=None, download=True
         )
         memory_dataset = CIFAR100(
-            root=args.data_path, train=True, transform=transform_load, download=False
+            root=args.data_path, train=True, transform=None, download=False
         )
     elif args.dataset == "imagenet100":
         train_file_path = "./datasets/imagenet100_train_clean_filelist.txt"
@@ -443,7 +377,6 @@ def set_aug_diff(args):
         train_dataset = train_file_list
         memory_dataset = train_file_list
         test_dataset = val_file_list
-        # ft_dataset = val_file_list  # dummy placeholder here, not used anyway
     else:
         raise NotImplementedError
 

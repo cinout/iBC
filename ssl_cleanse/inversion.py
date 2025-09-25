@@ -1,7 +1,5 @@
-import torch.nn.functional as F
 from torch.utils import data
 import torch
-import torchvision
 
 
 class DatasetInit(data.Dataset):

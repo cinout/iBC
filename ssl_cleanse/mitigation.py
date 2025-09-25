@@ -1,11 +1,9 @@
-import os
 import PIL
 import numpy as np
 from torch.optim.lr_scheduler import MultiStepLR
 import torchvision.transforms as T
 import random
-from PIL import ImageFilter, Image
-import torchvision.transforms.functional as F
+from PIL import ImageFilter
 import torch
 from torch.utils.data import Dataset
 
@@ -14,24 +12,8 @@ CONSISTENCY = 1.4826
 
 
 def outlier(l1_norm_list, combined=False):
-    ##### (Option 1) return all indices
+    ## return all indices
     return list(range(len(l1_norm_list)))
-
-    median = torch.median(l1_norm_list)  # median of the list
-    median_dist_to_median = CONSISTENCY * torch.median(torch.abs(l1_norm_list - median))
-    scores = torch.abs(l1_norm_list - median) / median_dist_to_median
-
-    #### (Option 2) use ||>2 as indicated in the paper, but we need to be aware of potential zero set issue
-    # indices = torch.nonzero(scores > 2).flatten()
-    # print(f"indices.shape: {indices.shape}")
-
-    #### (Option 3) return top 2
-    if combined:
-        _, indices = torch.topk(scores, k=4, largest=True, sorted=True)
-    else:
-        _, indices = torch.topk(scores, k=1, largest=True, sorted=True)
-
-    return indices.tolist()
 
 
 def get_scheduler(args, optimizer):
@@ -94,14 +76,8 @@ class FileListDataset(Dataset):
         image = PIL.Image.fromarray(image)  # PIL format
         clean_view_1 = self.basic_transform(image)  # tensor, [3, img_size, img_size]
         clean_view_2 = self.basic_transform(image)  # tensor, [3, img_size, img_size]
-        # clean_view_3 = self.basic_transform(image)  # tensor
 
         cluster_id = self.cluster_list[idx]
-
-        # valid_trigger_indices = [
-        #     index for index in range(self.num_clusters) if index != cluster_id
-        # ]
-        # trigger_index = random.choice(valid_trigger_indices)
 
         return clean_view_1, clean_view_2, cluster_id
 

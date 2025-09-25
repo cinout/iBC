@@ -71,7 +71,7 @@ class SimCLRModel(CLModel):
         A loss scalar.
     """
 
-    def supConLoss(self, features, labels=None, mask=None, mean=True):
+    def supConLoss(self, features, labels=None, mask=None):
         # features.shape [bs, 2, C]
         temperature = self.args.temp
         contrast_mode = "all"
@@ -145,22 +145,5 @@ class SimCLRModel(CLModel):
         loss = -(temperature / base_temperature) * mean_log_prob_pos
         loss = loss.view(anchor_count, batch_size)  # [2, bs]
 
-        # log_pos = -(temperature / base_temperature) * logits[mask.bool()].view(
-        #     logits.shape[0], -1
-        # )
-        # log_neg = (temperature / base_temperature) * torch.log(
-        #     exp_logits.sum(1, keepdim=True)
-        # )
-
-        # loss_pos = log_pos.view(anchor_count, batch_size)
-        # loss_neg = log_neg.view(anchor_count, batch_size)
-
-        if mean:
-            standard_simclr_loss = loss.mean()
-
-            return standard_simclr_loss
-            # return loss.mean(), loss_pos.mean(), loss_neg.mean()
-        else:
-            # NOT CALLED
-            return loss
-            # return loss, loss_pos, loss_neg
+        standard_simclr_loss = loss.mean()
+        return standard_simclr_loss

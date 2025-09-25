@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 import pandas as pd
-from collections import Counter, OrderedDict
+from collections import OrderedDict
 import torch.nn as nn
 import torchvision.transforms as T
 

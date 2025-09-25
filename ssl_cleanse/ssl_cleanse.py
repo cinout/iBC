@@ -15,7 +15,6 @@ from ssl_cleanse.inversion import (
     dataloader_cluster,
     eval_knn,
     get_data,
-    # norm_mse_loss,
 )
 
 from ssl_cleanse.mitigation import ds_train, get_scheduler, outlier

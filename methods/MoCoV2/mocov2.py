@@ -5,30 +5,6 @@ import torch.nn.functional as F
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-# class MoCoLosses(typing.NamedTuple):
-#     loss_contr: typing.Optional[torch.Tensor] = None
-#     logits_contr: typing.Optional[torch.Tensor] = None
-#     loss_align: typing.Optional[torch.Tensor] = None
-#     loss_unif: typing.Optional[torch.Tensor] = None
-
-#     def combine(
-#         self, contr_w: float = 1, align_w: float = 1, unif_w: float = 1
-#     ) -> torch.Tensor:
-#         # assert not contr_w == align_w == unif_w == 0
-#         # l = 0
-#         # if contr_w != 0:
-#         #     assert self.loss_contr is not None
-#         #     l += contr_w * self.loss_contr
-#         # if align_w != 0:
-#         #     assert self.loss_align is not None
-#         #     l += align_w * self.loss_align
-#         # if unif_w != 0:
-#         #     assert self.loss_unif is not None
-#         #     l += unif_w * self.loss_unif
-#         # return l
-#         return self.loss_contr
-
-
 class MoCo(nn.Module):
     r"""
     Build a MoCo model with: a query encoder, a key encoder, and a queue
@@ -44,9 +20,6 @@ class MoCo(nn.Module):
         m=0.999,
         contr_tau=0.2,
         mlp=True,
-        # align_alpha=None,  # 2
-        # unif_t=None,  # 3
-        # unif_intra_batch=True,  # True
     ):
         r"""
         dim: feature dimension (default: 128)
@@ -65,13 +38,6 @@ class MoCo(nn.Module):
             self.register_buffer("scalar_label", torch.zeros((), dtype=torch.long))
         else:
             self.register_parameter("scalar_label", None)
-
-        # # l_align
-        # self.align_alpha = align_alpha
-
-        # # l_unif
-        # self.unif_t = unif_t
-        # self.unif_intra_batch = unif_intra_batch
 
         # create the encoders
         # num_classes is the output fc dimension
@@ -116,23 +82,12 @@ class MoCo(nn.Module):
     def _dequeue_and_enqueue(self, keys):
         # gather keys before updating queue
         keys = concat_all_gather(keys)
-
         batch_size = keys.shape[0]
-
         ptr = int(self.queue_ptr)
-
-        # assert self.K % batch_size == 0  # for simplicity
 
         # replace the keys at ptr (dequeue and enqueue)
 
         if ptr + batch_size > self.K:
-            # print(f"<<<<< ptr: {ptr}")
-            # print(f"<<<<< batch_size: {batch_size}")
-            # print(f"<<<<< self.K: {self.K}")
-            # print(f"<<<<< self.queue.shape: {self.queue.shape}")
-            # print(f"<<<<< keys.T.shape: {keys.T.shape}")
-            # print(f"<<<<<<<<<<<<<<<")
-
             self.queue[:, ptr : self.K] = keys.T[:, : self.K - ptr]
             self.queue[:, : ptr + batch_size - self.K] = keys.T[:, self.K - ptr :]
         else:
@@ -203,7 +158,7 @@ class MoCo(nn.Module):
         # l_contrastive
         if self.contr_tau is not None:
             # compute logits
-            # Einstein sum is more intuitive
+
             # positive logits: Nx1
             l_pos = get_q_bdot_k().unsqueeze(-1)
             # negative logits: NxK
@@ -211,39 +166,12 @@ class MoCo(nn.Module):
 
             # logits: Nx(1+K)
             logits = torch.cat([l_pos, l_neg], dim=1)
-
             # apply temperature
             logits /= self.contr_tau
-
-            # moco_loss_ctor_dict["logits_contr"] = logits
-            # moco_loss_ctor_dict["loss_contr"] = F.cross_entropy(
-            #     logits, self.scalar_label.expand(logits.shape[0])
-            # )
-
-        # # l_align
-        # if self.align_alpha is not None:
-        #     if self.align_alpha == 2:
-        #         moco_loss_ctor_dict["loss_align"] = 2 - 2 * get_q_bdot_k().mean()
-        #     elif self.align_alpha == 1:
-        #         moco_loss_ctor_dict["loss_align"] = (q - k).norm(dim=1, p=2).mean()
-        #     else:
-        #         moco_loss_ctor_dict["loss_align"] = (
-        #             (2 - 2 * get_q_bdot_k()).pow(self.align_alpha / 2).mean()
-        #         )
-
-        # # l_uniform
-        # if self.unif_t is not None:
-        #     sq_dists = (2 - 2 * get_q_dot_queue()).flatten()
-        #     if self.unif_intra_batch:
-        #         sq_dists = torch.cat([sq_dists, torch.pdist(q, p=2).pow(2)])
-        #     moco_loss_ctor_dict["loss_unif"] = (
-        #         sq_dists.mul(-self.unif_t).exp().mean().log()
-        #     )
 
         # dequeue and enqueue
         self._dequeue_and_enqueue(k)
 
-        # return MoCoLosses(**moco_loss_ctor_dict)
         standard_mocov2_loss = F.cross_entropy(
             logits, self.scalar_label.expand(logits.shape[0])
         )

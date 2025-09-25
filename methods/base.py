@@ -21,7 +21,7 @@ from networks.mask_batchnorm import MaskBatchNorm2d
 import PIL
 import random
 from kornia import augmentation as aug
-from methods.maskprune import (
+from rnp.maskprune import (
     test_maskprune,
     evaluate_by_threshold,
     read_data,
@@ -296,13 +296,7 @@ def eval_linear_classifier(
 ):
 
     with torch.no_grad():
-        # if args.use_ibc and use_ss_detector:
-        #     acc1_accumulator_dict = {}
-        #     total_count_dict = {}
-        #     for k in args.removed_channel_num:
-        #         acc1_accumulator_dict[k] = 0.0
-        #         total_count_dict[k] = 0
-        # else:
+
         acc1_accumulator = 0.0
         total_count = 0
 

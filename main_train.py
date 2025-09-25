@@ -3,7 +3,7 @@ import argparse
 import random
 import torch.optim as optim
 from datetime import datetime
-from data_prepare.diffaugment import set_aug_diff, PoisonAgent
+from data_prepare.data_prepare import set_aug_diff, PoisonAgent
 from methods import set_model
 from methods.base import CLTrainer
 from utils.util import *

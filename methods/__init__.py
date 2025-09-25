@@ -1,7 +1,7 @@
 from .SimCLR.simclr import SimCLRModel
 from .BYOL.byol import BYOL
-import torchvision.models as models
 from .MoCoV2.mocov2 import MoCo
+import torchvision.models as models
 
 
 def set_model(args):
@@ -13,15 +13,11 @@ def set_model(args):
         return MoCo(
             models.__dict__[args.arch],
             args,
-            # FIXME: 512, read from resnet18
-            dim=512,
+            dim=512,  # FIXME: 512, read from resnet18
             K=65536,
             m=0.999,
             contr_tau=0.2,
             mlp=True,
-            # align_alpha=2,
-            # unif_t=3,
-            # unif_intra_batch=True,
         )
     else:
         raise NotImplementedError
