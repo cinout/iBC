@@ -2,6 +2,8 @@ import copy, random
 import torch
 import torch.nn as nn
 import numpy as np
+from networks.resnet_org import model_dict
+from networks.resnet_cifar import model_dict as model_dict_cifar
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -44,3 +46,11 @@ def update_seed(seed):
     torch.cuda.manual_seed_all(seed)  # PyTorch GPU (if using multi-GPU)
     np.random.seed(seed)
     random.seed(seed)
+
+
+def get_feat_dim(args):
+    if "cifar" in args.dataset:
+        _, feat_dim = model_dict_cifar[args.arch]
+    else:
+        _, feat_dim = model_dict[args.arch]
+    return feat_dim

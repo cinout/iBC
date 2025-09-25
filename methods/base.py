@@ -12,7 +12,13 @@ from warmup_scheduler import GradualWarmupScheduler
 from collections import Counter
 from networks.resnet_org import model_dict
 from networks.resnet_cifar import model_dict as model_dict_cifar
-from utils.util import AverageMeter, extract_backbone, save_model, update_seed
+from utils.util import (
+    AverageMeter,
+    extract_backbone,
+    get_feat_dim,
+    save_model,
+    update_seed,
+)
 from tqdm import tqdm
 import torch.nn.functional as F
 import torchvision.models as models
@@ -590,9 +596,9 @@ class CLTrainer:
         #### stage 2: model recovering
         print(f">>>>>>>> start model recovering")
         if self.args.method == "mocov2":
+            feat_dim = get_feat_dim(self.args)
             unlearned_model = models.__dict__[self.args.arch](
-                # TODO: dynamic
-                num_classes=512,
+                num_classes=feat_dim,
                 norm_layer=MaskBatchNorm2d,
             )
             unlearned_model.fc = nn.Sequential()
@@ -721,11 +727,7 @@ class CLTrainer:
     ):
         backbone.eval()
 
-        if "cifar" in self.args.dataset:
-            # TODO:  dynamically get feat_dim 512?
-            _, feat_dim = model_dict_cifar[self.args.arch]
-        else:
-            _, feat_dim = model_dict[self.args.arch]
+        feat_dim = get_feat_dim(self.args)
 
         # initialize linear mode, including normalization module
         train_probe_feats = get_feats(
@@ -919,8 +921,10 @@ class CLTrainer:
 
         # Esimate poisoned triggers
         if self.args.use_randomdrop:
-            # TODO: 512, read from resnet18
-            contributing_indices = torch.randperm(512)[: self.args.removed_channel_num]
+            feat_dim = get_feat_dim(self.args)
+            contributing_indices = torch.randperm(feat_dim)[
+                : self.args.removed_channel_num
+            ]
         else:
             contributing_indices = find_trigger_channels(
                 self.args,
@@ -980,7 +984,6 @@ class CLTrainer:
     kNN classifier evaluation (label prediction).
     """
 
-    # TODO: reorder the loaders
     @torch.no_grad()
     def knn_monitor_fre(
         self,
