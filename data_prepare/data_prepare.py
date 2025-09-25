@@ -105,14 +105,14 @@ class PoisonAgent:
             train_paths = self.trainset
             val_paths = self.validset
 
-            print("transform training data")
+            print("prepare training data")
             x_train_tensor, y_train_tensor = get_data_and_label(
                 train_paths, self.args.image_size
             )
             x_train_tensor = torch.stack(x_train_tensor)
             y_train_tensor = torch.stack(y_train_tensor)
 
-            print("transform validation data")
+            print("prepare validation data")
             x_test_tensor, y_test_tensor = get_data_and_label(
                 val_paths, self.args.image_size
             )

@@ -992,7 +992,7 @@ class CLTrainer:
         test_clean_loader,
         test_poi_loader,
         args,
-        k=200,  # or 200
+        k=130,  # or 200
         t=0.1,
         hide_progress=True,
         classes=-1,
