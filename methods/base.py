@@ -591,7 +591,9 @@ class CLTrainer:
         print(f">>>>>>>> start model recovering")
         if self.args.method == "mocov2":
             unlearned_model = models.__dict__[self.args.arch](
-                num_classes=512, norm_layer=MaskBatchNorm2d
+                # TODO: dynamic
+                num_classes=512,
+                norm_layer=MaskBatchNorm2d,
             )
             unlearned_model.fc = nn.Sequential()
         else:

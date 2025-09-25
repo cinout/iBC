@@ -51,7 +51,6 @@ Batch Size
 """
 parser.add_argument("--pretrain_batch_size", default=128, type=int)
 parser.add_argument("--linear_probe_batch_size", default=128, type=int)
-parser.add_argument("--eval_batch_size", default=512, type=int)
 
 
 """

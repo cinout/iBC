@@ -93,7 +93,7 @@ class PoisonAgent:
             self.train_pos_loader,
             self.test_clean_loader,
             self.test_pos_loader,
-            self.memory_loader,
+            self.memory_loader,  # new
             self.train_probe_loader,
         ) = self.choose_poisons_randomly()
 
@@ -133,6 +133,7 @@ class PoisonAgent:
                 / 255.0,  # .data returns numpy array; value range: 0-254; shape: [50000, 32, 32, 3]
                 self.validset.data.astype(np.float32) / 255.0,
             )
+            # self.memory_loader is the one from set_aug_diff()
             x_memory_np = self.memory_loader.dataset.data.astype(np.float32) / 255.0
 
             # get labels
@@ -376,10 +377,10 @@ def set_aug_diff(args):
     else:
         raise NotImplementedError
 
-    # memory loader is clean train set without shuffle
+    # memory loader is clean train set without shuffle, replaced later in the PoisonAgent step
     memory_loader = torch.utils.data.DataLoader(
         memory_dataset,
-        args.eval_batch_size,
+        512,
         shuffle=False,
         num_workers=args.num_workers,
         pin_memory=True,
