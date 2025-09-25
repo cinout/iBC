@@ -3,6 +3,8 @@
 <!-- TODO: store the pre-trained models in cloud? -->
 <!-- TODO: remove all TODOs and FIXMEs -->
 
+# iBC: Identify Backdoor Channels in Contrastive Pre-trained Encoders
+
 # Checkpoints
 
 <!-- TODO: put them in cloud service -->

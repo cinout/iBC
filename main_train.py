@@ -405,9 +405,8 @@ def main(args):
     """
     Create Model
     """
-    print("=> creating cnn model '{}'".format(args.arch))
+    print("=> creating model '{}'".format(args.arch))
 
-    # this is where model like simclr, byol is determined
     model = set_model(args)
 
     if args.pretrained_ssl_model != "":
@@ -468,10 +467,9 @@ def main(args):
 
     # SSL attack and KNN Evaluation [Poisoned Model]
     trainer.train_freq(model, optimizer, train_transform, poison)
-
-    # Linear Probe and Evaluation [Poisoned Model]
     backbone = extract_backbone(args.method, model)
 
+    # Linear Probe and Evaluation [Poisoned Model]
     trained_linear = trainer.linear_probing(backbone, poison)
 
     """
@@ -484,8 +482,6 @@ def main(args):
     """
     if args.use_ibc:
         update_seed(args.trigger_channel_removal_seed)
-        # if args.find_channels_from_n_poison_samples > 0:
-
         knn_clean_acc_list = []
         knn_back_asr_list = []
         linear_clean_acc_list = []
