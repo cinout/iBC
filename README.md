@@ -10,7 +10,7 @@ All datasets are stored in the `datasets/` folder.
 
 ### CIFAR-10/100
 
-Both datasets are automatically downloaded during first run.
+Both datasets are automatically downloaded during the first run.
 
 ### ImageNet-100
 
@@ -75,7 +75,7 @@ python -u main_train.py \
 
 ## Pre-trained Poisoned Encoder and Linear Classifier Checkpoints
 
-After pre-training, the poisoned encoder and linear classifier are saved under folder `Experiments/[timestamp]_[case]_[seed]/`. The encoder is `encoder.pth.tar` and linear classifier is `linear.pth.tar`.
+After pre-training, the poisoned encoder and linear classifier are saved under the folder `Experiments/[timestamp]_[case]_[seed]/`. The encoder is `encoder.pth.tar` and linear classifier is `linear.pth.tar`.
 
 ## Run iBC Defense
 

@@ -238,12 +238,12 @@ Train the linear classifier
 
 
 def train_linear_classifier(
-    train_loader, backbone, linear, optimizer, normalize_transform
+    probe_loader, backbone, linear, optimizer, normalize_transform
 ):
     backbone.eval()
     linear.train()
 
-    for i, content in enumerate(train_loader):
+    for i, content in enumerate(probe_loader):
         (images, target, _) = content
 
         images = images.to(device)
@@ -294,7 +294,6 @@ def eval_linear_classifier(
     use_ss_detector,
     contributing_indices,
 ):
-
     with torch.no_grad():
 
         acc1_accumulator = 0.0
@@ -324,10 +323,9 @@ def eval_linear_classifier(
 
             # compute output
             output = backbone(images)
-            if args.use_ibc and use_ss_detector:
-                # for k in args.removed_channel_num:
-                indices_toremove = contributing_indices[0 : args.removed_channel_num]
 
+            if use_ss_detector:
+                indices_toremove = contributing_indices[0 : args.removed_channel_num]
                 output[:, indices_toremove] = 0.0
 
             acc1_accumulator, total_count = produces_evaluation_results(
@@ -655,9 +653,9 @@ class CLTrainer:
             backbone,
             poison.memory_loader,
             poison.test_clean_loader,
+            poison.test_pos_loader,
             self.args,
             classes=self.args.num_classes,
-            backdoor_loader=poison.test_pos_loader,
         )
 
         # unimpacted linear performance
@@ -776,7 +774,7 @@ class CLTrainer:
                 filename=os.path.join(self.args.saved_path, "linear.pth.tar"),
             )
 
-        # evaluation of linear
+        # evaluation of linear (uncleansed)
         backbone.eval()
         linear.eval()
         clean_acc1 = eval_linear_classifier(
@@ -880,9 +878,9 @@ class CLTrainer:
                     backbone,
                     poison.memory_loader,
                     test_clean_loader,
+                    test_back_loader,
                     self.args,
                     classes=self.args.num_classes,
-                    backdoor_loader=test_back_loader,
                 )
                 print(
                     "[{}-epoch] time:{:.1f} | clean acc: {:.1f} | back acc: {:.1f} | loss:{:.3f} | cl_loss:{:.3f}".format(
@@ -919,7 +917,6 @@ class CLTrainer:
 
         # Esimate poisoned triggers
         if self.args.use_randomdrop:
-            update_seed(self.args.randomdrop_seed)
             # TODO: 512, read from resnet18
             contributing_indices = torch.randperm(512)[: self.args.removed_channel_num]
         else:
@@ -937,9 +934,9 @@ class CLTrainer:
             backbone,
             poison.memory_loader,
             poison.test_clean_loader,
+            poison.test_pos_loader,
             self.args,
             classes=self.args.num_classes,
-            backdoor_loader=poison.test_pos_loader,
             use_SS_detector=True,
             contributing_indices=contributing_indices,
         )
@@ -987,13 +984,13 @@ class CLTrainer:
         self,
         net,
         memory_data_loader,
-        test_data_loader,
+        test_clean_loader,
+        test_poi_loader,
         args,
         k=200,  # or 200
         t=0.1,
         hide_progress=True,
         classes=-1,
-        backdoor_loader=None,
         use_SS_detector=False,
         contributing_indices=None,
     ):
@@ -1031,7 +1028,7 @@ class CLTrainer:
 
         clean_val_top1, clean_val_total_num = 0.0, 0
 
-        test_bar = tqdm(test_data_loader, desc="kNN", disable=hide_progress)
+        test_bar = tqdm(test_clean_loader, desc="kNN", disable=hide_progress)
         for content in test_bar:
 
             (data, target, _) = content
@@ -1061,7 +1058,7 @@ class CLTrainer:
 
         backdoor_val_top1, backdoor_val_total_num = 0.0, 0
 
-        backdoor_test_bar = tqdm(backdoor_loader, desc="kNN", disable=hide_progress)
+        backdoor_test_bar = tqdm(test_poi_loader, desc="kNN", disable=hide_progress)
 
         for content in backdoor_test_bar:
             (data, target, original_label, _) = content
@@ -1105,7 +1102,7 @@ class CLTrainer:
         )
 
     """
-    Helper function for kNN classifier label prediction. Used in function knn_monitor_fre()
+    Helper function for kNN classifier label prediction.
     """
 
     def knn_predict(self, feature, feature_bank, feature_labels, classes, knn_k, knn_t):

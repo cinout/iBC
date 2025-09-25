@@ -210,7 +210,7 @@ class PoisonAgent:
         train_is_poisoned = torch.zeros_like(y_train_tensor)
         train_is_poisoned[poison_index] = 1
 
-        # TODO: can be removed. for image indexing, used for input-filtering methods
+        # image indexing for input-filtering methods
         train_index = torch.tensor(list(range(len(self.trainset))), dtype=torch.long)
         test_index = torch.tensor(list(range(len(self.validset))), dtype=torch.long)
         memory_index = torch.tensor(list(range(len(x_memory_tensor))), dtype=torch.long)
@@ -220,7 +220,7 @@ class PoisonAgent:
             (
                 TensorDataset(
                     x_train_tensor,
-                    train_is_poisoned,  # TODO: can be removed later, for debug purpose only
+                    train_is_poisoned,
                     y_train_tensor,
                     train_index,
                 )
@@ -337,7 +337,6 @@ def set_aug_diff(args):
 
     ####################### Define Datasets #######################
     if args.dataset == "cifar10":
-
         train_dataset = CIFAR10(
             root=args.data_path, train=True, transform=None, download=True
         )
@@ -377,7 +376,7 @@ def set_aug_diff(args):
     else:
         raise NotImplementedError
 
-    # memory loader is train set without shuffle
+    # memory loader is clean train set without shuffle
     memory_loader = torch.utils.data.DataLoader(
         memory_dataset,
         args.eval_batch_size,
@@ -387,10 +386,10 @@ def set_aug_diff(args):
     )
 
     return (
-        train_dataset,  # [double check] used as PoisonAgent's train_dataset
-        test_dataset,  # [double check] used as PoisonAgent's val_dataset
-        memory_loader,  #  [double check] used as PoisonAgent's memory_loader
-        train_transform,  #  [double check] used in train_loader iteration, SSL methods' augmentation pipeline
+        train_dataset,
+        test_dataset,
+        memory_loader,
+        train_transform,
     )
 
 

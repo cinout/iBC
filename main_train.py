@@ -190,7 +190,6 @@ parser.add_argument(
 )
 
 
-# TODO: rework
 """
 Defense Baseline: RandomDrop
 """
@@ -502,7 +501,7 @@ def main(args):
         )
 
     """
-    Baseline 1: Use SSL-CLeanse (ECCV 2024 paper)
+    Baseline 1: Use SSL-CLeanse (Ssl-cleanse: Trojan detection and mitigation in self-supervised learning, ECCV 2024)
     """
     if args.use_ssl_cleanse:
         update_seed(args.ssl_cleanse_seed)
@@ -521,9 +520,9 @@ def main(args):
             cleansed_backbone,
             poison.memory_loader,
             poison.test_clean_loader,
+            poison.test_pos_loader,
             args,
             classes=args.num_classes,
-            backdoor_loader=poison.test_pos_loader,
         )
         print(
             f">>>> With SSL-cleanse model, for kNN classifier, clean acc: {clean_acc:.1f}, back acc: {back_acc:.1f}",
@@ -532,7 +531,7 @@ def main(args):
         _ = new_trainer.linear_probing(cleansed_backbone, poison, force_training=True)
 
     """
-    Baseline 2: Mask Pruning Strategy
+    Baseline 2: Mask Pruning Strategy (Reconstructive neuron pruning for backdoor defense, ICML 2023)
     """
     if args.use_rnp:
         backbone = extract_backbone(args.method, model)
@@ -540,11 +539,14 @@ def main(args):
         trainer.mask_prune(backbone, poison, trained_linear)
 
     """
-    Baseline 3: Random Channel Removal, add args.use_randomdrop
+    Baseline 3: Random Channel Removal
     """
+    if args.use_randomdrop:
+        update_seed(args.randomdrop_seed)
+        trainer.trigger_channel_removal(model, poison, trained_linear)
 
     """
-    Baseline 4: MIMIC
+    Baseline 4: MIMIC (Mutual information guided backdoor mitigation for pretrained encoders, IEEE Transactions on Information Forensics and Security, 2025)
     """
     if args.use_mimic:
         update_seed(args.mimic_seed)
@@ -567,9 +569,9 @@ def main(args):
             student_backbone,
             poison.memory_loader,
             poison.test_clean_loader,
+            poison.test_pos_loader,
             args,
             classes=args.num_classes,
-            backdoor_loader=poison.test_pos_loader,
         )
         print(
             f">>>> With MIMIC model, for kNN classifier, clean acc: {clean_acc:.1f}, back acc: {back_acc:.1f}",
@@ -577,7 +579,7 @@ def main(args):
         _ = new_trainer.linear_probing(student_backbone, poison, force_training=True)
 
     """
-    Baseline 5: BCU
+    Baseline 5: BCU (Backdoor cleansing with unlabeled data, CVPR 2023)
     """
     if args.use_bcu:
         update_seed(args.bcu_seed)
@@ -601,9 +603,9 @@ def main(args):
             student_backbone,
             poison.memory_loader,
             poison.test_clean_loader,
+            poison.test_pos_loader,
             args,
             classes=args.num_classes,
-            backdoor_loader=poison.test_pos_loader,
         )
         print(
             f">>>> With BCU model, for kNN classifier, clean acc: {clean_acc:.1f}, back acc: {back_acc:.1f}",
