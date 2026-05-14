@@ -45,7 +45,7 @@ python -u main_train.py \
     --target_class 0 \
     \
     --use_adaptive_attack \
-    --adaptive_attack_lambda 0.1 \
+    --adaptive_attack_lambda 0.2 \
     --adaptive_attack_mode entropy \
 \
     --use_ibc \

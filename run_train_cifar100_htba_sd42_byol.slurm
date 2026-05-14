@@ -1,15 +1,15 @@
 #!/bin/bash
 
-#SBATCH --partition=gpu-a100
+###SBATCH --partition=gpu-a100
 
 ###SBATCH --partition=gpu-a100-short
 
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
 
-###SBATCH --partition=deeplearn
-###SBATCH --qos=gpgpudeeplearn
-###SBATCH --constraint=dlg4|dlg5|dlg6
+#SBATCH --partition=deeplearn
+#SBATCH --qos=gpgpudeeplearn
+#SBATCH --constraint=dlg4|dlg5|dlg6
 
 #SBATCH --job-name="c100_h"
 #SBATCH --account=punim1623
@@ -46,7 +46,7 @@ python -u main_train.py \
     --target_class 0 \
     \
     --use_adaptive_attack \
-    --adaptive_attack_lambda 0.1 \
+    --adaptive_attack_lambda 0.2 \
     --adaptive_attack_mode entropy \
 \
     --use_ibc \
