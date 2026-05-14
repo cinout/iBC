@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="img_h"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:14:00
+#SBATCH --time=0-00:30:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
