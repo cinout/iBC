@@ -250,7 +250,7 @@ def train_linear_classifier(
     linear.train()
 
     for i, content in enumerate(probe_loader):
-        (images, target, _) = content
+        images, target, _ = content
 
         images = images.to(device)
         images = normalize_transform(images)
@@ -307,10 +307,10 @@ def eval_linear_classifier(
 
         for i, content in enumerate(val_loader):
             if val_mode == "poison":
-                (images, target, original_label, _) = content
+                images, target, original_label, _ = content
                 original_label = original_label.to(device)
             elif val_mode == "clean":
-                (images, target, _) = content
+                images, target, _ = content
             else:
                 raise Exception(f"unimplemented val_mode {val_mode}")
 
@@ -809,7 +809,77 @@ class CLTrainer:
         return linear
 
     """
-    Train the SSL encoder and then perform kNN classifier evalution
+    Compute adaptive attack loss to bypass iBC defense
+    
+    The adaptive attack tries to distribute the trigger across many channels
+    to avoid being detected by spectral signature analysis (which looks for
+    concentrated trigger signals in few channels).
+    
+    Args:
+        features: Output features from SSL model, shape [bs, feat_dim]
+        mode: 'entropy' (maximize channel entropy), 'l2_spread' (spread L2 norm),
+              or 'adversarial' (make features robust to channel removal)
+    
+    Returns:
+        loss: Scalar loss value
+    """
+
+    def compute_adaptive_loss(self, features, mode="entropy"):
+        if mode == "entropy":
+            # Maximize entropy of feature distribution across channels
+            # This encourages the trigger to activate many channels equally
+            # L2 normalize to get probability-like distribution
+            feat_norm = F.normalize(features, p=2, dim=1)  # [bs, feat_dim]
+
+            # Compute Shannon entropy for each sample
+            # Higher entropy means more uniform activation across channels
+            feat_abs = torch.abs(feat_norm)
+            feat_probs = feat_abs / (feat_abs.sum(dim=1, keepdim=True) + 1e-8)
+
+            # Shannon entropy: -sum(p * log(p))
+            entropy = -torch.sum(feat_probs * torch.log(feat_probs + 1e-8), dim=1)
+
+            # We want to MINIMIZE entropy loss (negative entropy), which means
+            # we want to maximize entropy to spread activation
+            loss = -entropy.mean()  # Negative because we want to maximize entropy
+
+        elif mode == "l2_spread":
+            # Encourage L2 norm to be spread across channels evenly
+            # by minimizing the standard deviation of channel magnitudes
+            feat_norm = F.normalize(features, p=2, dim=0)  # Normalize across batch
+            channel_magnitudes = torch.norm(features, dim=0)  # [feat_dim]
+
+            # Minimize variance of channel magnitudes for even spread
+            loss = torch.var(channel_magnitudes)
+
+        elif mode == "adversarial":
+            # Simulate the defense: if top-k channels are removed,
+            # the attack should still succeed on remaining channels
+            # This encourages redundancy in trigger encoding
+            feat_dim = features.shape[1]
+            k = self.args.removed_channel_num
+
+            # Get top-k channels by magnitude
+            top_k_vals, top_k_indices = torch.topk(torch.abs(features).mean(dim=0), k)
+
+            # Create mask for remaining channels after defense
+            remaining_mask = torch.ones(feat_dim, device=features.device)
+            remaining_mask[top_k_indices] = 0
+
+            # Loss: minimize the magnitude of top-k channels while keeping others
+            # This way, when top-k are removed, remaining channels still contain info
+            masked_features = features * remaining_mask.unsqueeze(0)
+            loss = -torch.norm(masked_features, p=2) / (
+                torch.norm(features, p=2) + 1e-8
+            )
+        else:
+            raise ValueError(f"Unknown adaptive attack mode: {mode}")
+
+        return loss
+
+    """
+
+        Train the SSL encoder and then perform kNN classifier evalution
     """
 
     def train_freq(
@@ -861,6 +931,27 @@ class CLTrainer:
                         loss = model.negcos(*features)
                     elif self.args.method == "mocov2":
                         loss = model.loss(*features)
+
+                    # Add adaptive loss term for bypassing iBC defense
+                    if self.args.use_adaptive_attack:
+                        # Extract base features for adaptive loss computation
+                        # For different SSL methods, features structure differs
+                        if self.args.method == "simclr":
+                            # features shape: [bs, 2, C]; extract both views
+                            f1 = features[:, 0, :]
+                            f2 = features[:, 1, :]
+                            feat_for_loss = torch.cat([f1, f2], dim=0)
+                        elif self.args.method == "byol":
+                            # features is tuple of (online_proj, target_proj, online_pred, target_pred)
+                            feat_for_loss = torch.cat([features[0], features[1]], dim=0)
+                        elif self.args.method == "mocov2":
+                            # features is tuple (q, k) of query and key embeddings
+                            feat_for_loss = torch.cat([features[0], features[1]], dim=0)
+
+                        adaptive_loss = self.compute_adaptive_loss(
+                            feat_for_loss, mode=self.args.adaptive_attack_mode
+                        )
+                        loss = loss + self.args.adaptive_attack_lambda * adaptive_loss
 
                     losses.update(loss.item(), images[0].size(0))
                     cl_losses.update(loss.item(), images[0].size(0))
@@ -1036,7 +1127,7 @@ class CLTrainer:
         test_bar = tqdm(test_clean_loader, desc="kNN", disable=hide_progress)
         for content in test_bar:
 
-            (data, target, _) = content
+            data, target, _ = content
 
             data, target = data.to(device), target.to(device)
             data = self.normalize_transform(data)
@@ -1066,7 +1157,7 @@ class CLTrainer:
         backdoor_test_bar = tqdm(test_poi_loader, desc="kNN", disable=hide_progress)
 
         for content in backdoor_test_bar:
-            (data, target, original_label, _) = content
+            data, target, original_label, _ = content
 
             data, target, original_label = (
                 data.to(device),

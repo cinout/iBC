@@ -390,6 +390,28 @@ parser.add_argument(
     default=100,
 )
 
+
+"""
+Adaptive Attack (bypasses iBC defense)
+"""
+parser.add_argument(
+    "--use_adaptive_attack",
+    action="store_true",
+    help="Use adaptive attack that tries to bypass iBC defense by distributing trigger across channels",
+)
+parser.add_argument(
+    "--adaptive_attack_lambda",
+    type=float,
+    default=0.1,
+    help="Weight for adaptive attack loss term (higher = more emphasis on distribution)",
+)
+parser.add_argument(
+    "--adaptive_attack_mode",
+    choices=["entropy", "l2_spread", "adversarial"],
+    default="entropy",
+    help="Strategy for adaptive attack: entropy (maximize channel entropy), l2_spread (spread L2 norm), or adversarial (adversarial robustness)",
+)
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
