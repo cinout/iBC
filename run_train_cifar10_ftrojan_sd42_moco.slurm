@@ -44,7 +44,7 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --find_channels_from_n_poison_samples 1 \
+    --find_channels_from_n_poison_samples 2 \
     --find_channels_from_n_clean_samples 0 \
     \
     --pretrained_ssl_model "./Experiments/cifar10_ftrojan_mocov2_ref_set_sd42/last.pth.tar" \
