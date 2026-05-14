@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH --partition=gpu-a100
+###SBATCH --partition=gpu-a100
 
-###SBATCH --partition=gpu-a100-short
+#SBATCH --partition=gpu-a100-short
 
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="c10_h"
 #SBATCH --account=punim1623
-#SBATCH --time=0-12:00:00
+#SBATCH --time=0-00:04:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -37,16 +37,20 @@ conda activate anogpt
 
 python -u main_train.py \
     --method mocov2 \
-    --trigger_type none \
+    --trigger_type htba \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
     --dataset cifar10 \
     --target_class 0 \
-    
     \
-    #--pretrained_ssl_model "./Experiments/cifar10_htba_mocov2_ref_set_sd42/last.pth.tar" \
-    #--pretrained_linear_model "./Experiments/cifar10_htba_mocov2_ref_set_sd42/linear.pth.tar" \
+    \
+    --use_ibc \
+    --find_channels_from_n_poison_samples 4 \
+    --find_channels_from_n_clean_samples 0 \
+    \
+    --pretrained_ssl_model "./Experiments/cifar10_htba_mocov2_ref_set_sd42/last.pth.tar" \
+    --pretrained_linear_model "./Experiments/cifar10_htba_mocov2_ref_set_sd42/linear.pth.tar" \
 
 
 
