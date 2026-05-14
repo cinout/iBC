@@ -83,7 +83,7 @@ To run iBC defense for each case, add the following command-line options to each
 
 ```
 --use_ibc \
---find_channels_from_n_poison_samples 2 \
+--find_channels_from_n_poison_samples 8 \
 --pretrained_ssl_model [path_to_encoder_checkpoint]
 --pretrained_linear_model [path_to_linear_classifier_checkpoint]
 ```
