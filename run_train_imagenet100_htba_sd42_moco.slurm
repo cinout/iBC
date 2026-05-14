@@ -2,10 +2,10 @@
 
 ###SBATCH --partition=gpu-a100
 
-#SBATCH --partition=gpu-a100-short
+###SBATCH --partition=gpu-a100-short
 
-###SBATCH --partition=feit-gpu-a100
-###SBATCH --qos=feit
+#SBATCH --partition=feit-gpu-a100
+#SBATCH --qos=feit
 
 ###SBATCH --partition=deeplearn
 ###SBATCH --qos=gpgpudeeplearn
@@ -36,7 +36,7 @@ conda activate anogpt
 
 python -u main_train.py \
     --method mocov2 \
-    --trigger_type htba \
+    --trigger_type none \
     \
     --image_size 64 \
     \
@@ -44,14 +44,7 @@ python -u main_train.py \
     --magnitude_val 300.0 \
     --dataset imagenet100 \
     --target_class 26 \
-    \
-    --use_adaptive_attack \
-    --adaptive_attack_lambda 1.0 \
-    --adaptive_attack_mode entropy \
-\
-    --use_ibc \
-    --find_channels_from_n_poison_samples 4 \
-    --find_channels_from_n_clean_samples 0 \
+    
     \
     #--pretrained_ssl_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/last.pth.tar" \
     #--pretrained_linear_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/linear.pth.tar" \

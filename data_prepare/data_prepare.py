@@ -162,7 +162,7 @@ class PoisonAgent:
         """
         # Poisoned Validation Set
         """
-        # test set (poison all images)
+        # test set (poison all images) -- support no-poison option
         if self.args.trigger_type == "ftrojan":
             x_test_pos_tensor, y_test_pos_tensor = (
                 self.fre_poison_agent.Poison_Frequency_Diff(
@@ -176,6 +176,10 @@ class PoisonAgent:
                 x_test_tensor.clone().detach(),
                 y_test_tensor.clone().detach(),
             )
+        elif self.args.trigger_type == "none":
+            # No poisoning: keep validation images unchanged
+            x_test_pos_tensor = x_test_tensor.clone().detach()
+            y_test_pos_tensor = y_test_tensor.clone().detach()
 
         # assign correct label to poisoned images, as the Poison_Frequency_Diff() function only poisons image data, but does not pollute label
         y_test_pos_tensor = (
@@ -188,6 +192,10 @@ class PoisonAgent:
         """
         poison_index = torch.where(y_train_tensor == self.args.target_class)[0]
         poison_index = poison_index[: self.poison_num]
+
+        # If trigger_type is 'none', skip poisoning (empty index)
+        if self.args.trigger_type == "none":
+            poison_index = torch.tensor([], dtype=torch.long)
 
         if self.args.trigger_type == "ftrojan":
             x_train_tensor[poison_index], y_train_tensor[poison_index] = (

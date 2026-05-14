@@ -123,7 +123,9 @@ parser.add_argument("--knn_eval_freq", default=5, type=int)
 """
 Trigger / Poisoning
 """
-parser.add_argument("--trigger_type", default="ftrojan", choices=["ftrojan", "htba"])
+parser.add_argument(
+    "--trigger_type", default="ftrojan", choices=["ftrojan", "htba", "none"]
+)
 parser.add_argument("--target_class", default=0, type=int)
 parser.add_argument("--poison_ratio", default=0.01, type=float)
 parser.add_argument("--probe_set_percent", default=0.01, type=float)
@@ -457,6 +459,8 @@ def main(args):
         poison_agent = PoisonFre(args)
     elif args.trigger_type == "htba":
         poison_agent = PoisonHTBA(args)
+    elif args.trigger_type == "none":
+        poison_agent = None
 
     poison = PoisonAgent(
         args,

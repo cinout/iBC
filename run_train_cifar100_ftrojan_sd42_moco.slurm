@@ -36,19 +36,13 @@ conda activate anogpt
 
 python -u main_train.py \
     --method mocov2 \
+    --trigger_type none \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
     --dataset cifar100 \
     --target_class 0 \
-    \
-    --use_adaptive_attack \
-    --adaptive_attack_lambda 1.0 \
-    --adaptive_attack_mode entropy \
-\
-    --use_ibc \
-    --find_channels_from_n_poison_samples 4 \
-    --find_channels_from_n_clean_samples 0 \
+    
     \
     #--pretrained_ssl_model "./Experiments/cifar100_ftrojan_mocov2_ref_set_sd42/last.pth.tar" \
     #--pretrained_linear_model "./Experiments/cifar100_ftrojan_mocov2_ref_set_sd42/linear.pth.tar" \
