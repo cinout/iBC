@@ -50,7 +50,7 @@ python -u main_train.py \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    --pretrained_ssl_model "./Experiments/ada_entro_lambda_0.5_cifar100_htba_simclr_sd42/last.pth.tar" \
+    --pretrained_ssl_model "./Experiments/ada_entro_lambda_0.5_cifar100_htba_simclr_sd42/encoder.pth.tar" \
     --pretrained_linear_model "./Experiments/ada_entro_lambda_0.5_cifar100_htba_simclr_sd42/linear.pth.tar" \
 
 
