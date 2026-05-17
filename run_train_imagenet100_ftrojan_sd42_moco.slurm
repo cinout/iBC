@@ -46,8 +46,8 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --find_channels_from_n_poison_samples 5 \
-    --find_channels_from_n_clean_samples 3 \
+    --find_channels_from_n_poison_samples 4 \
+    --find_channels_from_n_clean_samples 4 \
     \
     --pretrained_ssl_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/last.pth.tar" \
     --pretrained_linear_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/linear.pth.tar" \
