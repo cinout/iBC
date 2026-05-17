@@ -139,6 +139,7 @@ parser.add_argument("--ftrojan_channel", nargs="+", type=int, default=[1, 2])
 """
 Image Augmentation
 """
+# TODO: update this
 parser.add_argument(
     "--num_views",
     type=int,
@@ -165,12 +166,14 @@ parser.add_argument(
     help="apply channel removal strategy",
 )
 parser.add_argument("--trigger_channel_removal_seed", default=42, type=int)
+# TODO: update this
 parser.add_argument(
     "--removed_channel_num",
     type=int,
     default=70,
     help="model-level backdoor estimation channel",
 )
+# TODO: update this
 parser.add_argument(
     "--voted_channel_num",
     type=int,
