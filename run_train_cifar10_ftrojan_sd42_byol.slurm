@@ -1,8 +1,8 @@
 #!/bin/bash
 
-###SBATCH --partition=gpu-a100
+#SBATCH --partition=gpu-a100
 
-#SBATCH --partition=gpu-a100-short
+###SBATCH --partition=gpu-a100-short
 
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
@@ -44,8 +44,8 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --find_channels_from_n_poison_samples 4 \
-    --find_channels_from_n_clean_samples 4 \
+    --find_channels_from_n_poison_samples 3 \
+    --find_channels_from_n_clean_samples 5 \
     \
     --pretrained_ssl_model "./Experiments/cifar10_ftrojan_byol_ref_set_sd42/last.pth.tar" \
     --pretrained_linear_model "./Experiments/cifar10_ftrojan_byol_ref_set_sd42/linear.pth.tar" \
