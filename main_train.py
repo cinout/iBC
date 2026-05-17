@@ -174,7 +174,6 @@ parser.add_argument(
     default=70,
     help="model-level backdoor estimation channel",
 )
-# TODO: update this
 parser.add_argument(
     "--voted_channel_num",
     type=int,
