@@ -139,7 +139,6 @@ parser.add_argument("--ftrojan_channel", nargs="+", type=int, default=[1, 2])
 """
 Image Augmentation
 """
-# TODO: update this
 parser.add_argument(
     "--num_views",
     type=int,
