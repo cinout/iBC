@@ -47,7 +47,7 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --removed_channel_num 100 \
+    --removed_channel_num 130 \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
