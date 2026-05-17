@@ -46,7 +46,7 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --ss_aug_option 1 \
+    --ss_aug_option 2 \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
