@@ -44,8 +44,9 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --find_channels_from_n_poison_samples 0 \
-    --find_channels_from_n_clean_samples 8 \
+    --removed_channel_num 40 \
+    --find_channels_from_n_poison_samples 4 \
+    --find_channels_from_n_clean_samples 0 \
     \
     --pretrained_ssl_model "./Experiments/cifar10_ftrojan_byol_ref_set_sd42/last.pth.tar" \
     --pretrained_linear_model "./Experiments/cifar10_ftrojan_byol_ref_set_sd42/linear.pth.tar" \
