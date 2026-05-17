@@ -44,7 +44,7 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --voted_channel_num 40 \
+    --voted_channel_num 50 \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
