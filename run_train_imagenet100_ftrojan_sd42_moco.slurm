@@ -46,7 +46,7 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --num_views 4 \
+    --num_views 16 \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
