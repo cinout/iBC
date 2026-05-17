@@ -71,14 +71,87 @@ class PoisonAgent:
         self.magnitude_train = args.magnitude_train
         self.magnitude_val = args.magnitude_val
 
-        ss_views_aug = [
-            transforms.RandomResizedCrop(
-                self.args.image_size,
-                scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
-                ratio=(0.2, 5),
-            ),
-            transforms.RandomPerspective(p=0.5),
-        ]
+        if self.args.ss_aug_option == 0:
+            # (default) RRC + PSP
+            ss_views_aug = [
+                transforms.RandomResizedCrop(
+                    self.args.image_size,
+                    scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
+                    ratio=(0.2, 5),
+                ),
+                transforms.RandomPerspective(p=0.5),
+            ]
+        elif self.args.ss_aug_option == 1:
+            # RRC
+            ss_views_aug = [
+                transforms.RandomResizedCrop(
+                    self.args.image_size,
+                    scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
+                    ratio=(0.2, 5),
+                ),
+            ]
+        elif self.args.ss_aug_option == 2:
+            # PSP + RRC
+            ss_views_aug = [
+                transforms.RandomPerspective(p=0.5),
+                transforms.RandomResizedCrop(
+                    self.args.image_size,
+                    scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
+                    ratio=(0.2, 5),
+                ),
+            ]
+        elif self.args.ss_aug_option == 3:
+            # HF + RRC + PSP
+            ss_views_aug = [
+                transforms.RandomHorizontalFlip(p=0.5),
+                transforms.RandomResizedCrop(
+                    self.args.image_size,
+                    scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
+                    ratio=(0.2, 5),
+                ),
+                transforms.RandomPerspective(p=0.5),
+            ]
+        elif self.args.ss_aug_option == 4:
+            # VF + RRC + PSP
+            ss_views_aug = [
+                transforms.RandomVerticalFlip(p=0.5),
+                transforms.RandomResizedCrop(
+                    self.args.image_size,
+                    scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
+                    ratio=(0.2, 5),
+                ),
+                transforms.RandomPerspective(p=0.5),
+            ]
+
+        elif self.args.ss_aug_option == 5:
+            # Affine + RRC + PSP
+            ss_views_aug = [
+                transforms.RandomAffine(
+                    degrees=(0, 360), translate=(0.05, 0.2), shear=15
+                ),
+                transforms.RandomResizedCrop(
+                    self.args.image_size,
+                    scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
+                    ratio=(0.2, 5),
+                ),
+                transforms.RandomPerspective(p=0.5),
+            ]
+        elif self.args.ss_aug_option == 6:
+            # Jitter + RRC + PSP
+            ss_views_aug = [
+                RandomApply(
+                    transforms.ColorJitter(
+                        brightness=0.4, contrast=0.4, saturation=0.4, hue=0.1
+                    ),
+                    p=0.8,
+                ),
+                transforms.RandomResizedCrop(
+                    self.args.image_size,
+                    scale=(self.args.rrc_scale_min, self.args.rrc_scale_max),
+                    ratio=(0.2, 5),
+                ),
+                transforms.RandomPerspective(p=0.5),
+            ]
 
         # for spectral signature step
         self.ss_transform = NCropsTransform(

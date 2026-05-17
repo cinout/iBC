@@ -165,8 +165,9 @@ parser.add_argument(
     action="store_true",
     help="apply channel removal strategy",
 )
-parser.add_argument("--trigger_channel_removal_seed", default=42, type=int)
 # TODO: update this
+parser.add_argument("--ss_aug_option", type=int, default=0)
+parser.add_argument("--trigger_channel_removal_seed", default=42, type=int)
 parser.add_argument(
     "--removed_channel_num",
     type=int,
