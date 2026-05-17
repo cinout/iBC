@@ -172,5 +172,5 @@ if __name__ == "__main__":
 
 """
 Sample usage:
-python3 scripts/parse_slurm_out_extended.py results/ours_poi1 -o results/results_ours_poi1.json -f json
+python3 scripts/parse_slurm_out_extended.py results/ablation_aug_1 -o results/results_ablation_aug_1.json -f json
 """
