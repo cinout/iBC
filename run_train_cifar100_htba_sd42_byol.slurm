@@ -46,8 +46,8 @@ python -u main_train.py \
     --target_class 0 \
     \
     --use_adaptive_attack \
-    --adaptive_attack_lambda 2.0 \
-    --adaptive_attack_mode entropy \
+    --adaptive_attack_lambda 0.2 \
+    --adaptive_attack_mode svd_correlation \
 \
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \

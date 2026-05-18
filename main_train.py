@@ -411,7 +411,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--adaptive_attack_mode",
-    choices=["entropy", "l2_spread", "adversarial"],
+    choices=["entropy", "l2_spread", "adversarial", "svd_correlation"],
     default="entropy",
     help="Strategy for adaptive attack: entropy (maximize channel entropy), l2_spread (spread L2 norm), or adversarial (adversarial robustness)",
 )
