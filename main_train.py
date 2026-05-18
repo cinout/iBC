@@ -415,6 +415,12 @@ parser.add_argument(
     default="entropy",
     help="Strategy for adaptive attack: entropy (maximize channel entropy), l2_spread (spread L2 norm), or adversarial (adversarial robustness)",
 )
+parser.add_argument(
+    "--svd_start_epoch",
+    type=int,
+    default=100,
+    help="Epoch to start applying SVD-based adaptive loss (only relevant if mode is svd_correlation)",
+)
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

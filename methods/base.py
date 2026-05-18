@@ -819,12 +819,13 @@ class CLTrainer:
         features: Output features from SSL model, shape [bs, feat_dim]
         mode: 'entropy' (maximize channel entropy), 'l2_spread' (spread L2 norm),
               or 'adversarial' (make features robust to channel removal)
+        epoch: Current training epoch
     
     Returns:
         loss: Scalar loss value
     """
 
-    def compute_adaptive_loss(self, features, mode="entropy"):
+    def compute_adaptive_loss(self, features, mode="entropy", epoch=0):
         if mode == "entropy":
             # Maximize entropy of feature distribution across channels
             # This encourages the trigger to activate many channels equally
@@ -873,6 +874,10 @@ class CLTrainer:
                 torch.norm(features, p=2) + 1e-8
             )
         elif mode == "svd_correlation":
+            if epoch < self.args.svd_start_epoch:
+                # Don't apply SVD-based loss until certain epoch to allow stable SVD computation
+                return torch.tensor(0.0, device=features.device)
+
             # Center features along channel dim
             X = features - features.mean(dim=0, keepdim=True)
 
@@ -1076,7 +1081,9 @@ class CLTrainer:
                             feat_for_loss = torch.cat([features[0], features[1]], dim=0)
 
                         adaptive_loss = self.compute_adaptive_loss(
-                            feat_for_loss, mode=self.args.adaptive_attack_mode
+                            feat_for_loss,
+                            mode=self.args.adaptive_attack_mode,
+                            epoch=epoch,
                         )
                         loss = loss + self.args.adaptive_attack_lambda * adaptive_loss
 
