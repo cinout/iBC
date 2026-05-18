@@ -5,34 +5,12 @@ Write ACC ASR Table -- write data
 import json
 from pyparsing import Dict, Optional
 
+# FIXME: update
 file_names = [
-    "results_ablation_aug_1",
-    "results_ablation_aug_2",
-    "results_ablation_aug_3",
-    "results_ablation_aug_4",
-    "results_ablation_aug_5",
-    "results_ablation_aug_6",
-    "results_ablation_impure_p0c8",
-    "results_ablation_impure_p1c7",
-    "results_ablation_impure_p2c6",
-    "results_ablation_impure_p3c5",
-    "results_ablation_impure_p4c4",
-    "results_ablation_impure_p5c3",
-    "results_ablation_impure_p6c2",
-    "results_ablation_impure_p7c1",
-    "results_ablation_rm_channel_40",
-    "results_ablation_rm_channel_100",
-    "results_ablation_rm_channel_130",
-    "results_ablation_view_1",
-    "results_ablation_view_4",
-    "results_ablation_view_16",
-    "results_ablation_view_32",
-    "results_ablation_view_128",
-    "results_ablation_vote_channel_10",
-    "results_ablation_vote_channel_20",
-    "results_ablation_vote_channel_40",
-    "results_ablation_vote_channel_50",
-]  # FIXME: update
+    "results_ada_entro_0.2",
+    "results_ada_entro_0.5",
+    "results_ada_entro_1",
+]
 
 for file_name in file_names:
 
@@ -57,6 +35,7 @@ for file_name in file_names:
             for dataset in datasets:
                 for metric in metrics:
 
+                    ## backdoored (uncleansed) data
                     # if classifier == "knn":
                     #     if metric == "clean_acc":
                     #         result_key = "clean_acc_800"
@@ -68,6 +47,7 @@ for file_name in file_names:
                     #     elif metric == "back_asr":
                     #         result_key = "linear_ASR"
 
+                    ## cleansed data
                     result_key = f"{classifier}_{metric}"
 
                     for trigger in triggers:

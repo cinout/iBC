@@ -182,7 +182,7 @@ parser.add_argument(
 parser.add_argument(
     "--find_channels_from_n_poison_samples",
     type=int,
-    default=0,
+    default=4,
     help="If >0, sample from limited number of images for trigger channel",
 )
 parser.add_argument(

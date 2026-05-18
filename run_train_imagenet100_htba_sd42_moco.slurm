@@ -11,16 +11,16 @@
 ###SBATCH --qos=gpgpudeeplearn
 ###SBATCH --constraint=dlg4|dlg5|dlg6
 
-#SBATCH --job-name="c100_h"
+#SBATCH --job-name="img_h"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:04:00
+#SBATCH --time=0-10:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=80G
+#SBATCH --mem=120G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
@@ -29,29 +29,35 @@
 # export MASTER_ADDR=$master_addr
 # echo ">>> MASTER_ADDR="$MASTER_ADDR
 
-
-
 module purge
 
 eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 python -u main_train.py \
-    --method byol \
+    --method mocov2 \
     --trigger_type htba \
     \
-    --magnitude_train 50.0 \
-    --magnitude_val 100.0 \
-    --dataset cifar100 \
-    --target_class 0 \
+    --image_size 64 \
     \
+    --magnitude_train 300.0 \
+    --magnitude_val 300.0 \
+    --dataset imagenet100 \
+    --target_class 26 \
     \
+    --use_adaptive_attack \
+    --adaptive_attack_lambda 2.0 \
+    --adaptive_attack_mode entropy \
+\
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    --pretrained_ssl_model "./Experiments/ada_entro_lambda_0.2_cifar100_htba_byol_sd42/encoder.pth.tar" \
-    --pretrained_linear_model "./Experiments/ada_entro_lambda_0.2_cifar100_htba_byol_sd42/linear.pth.tar" \
+    #--pretrained_ssl_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/last.pth.tar" \
+    #--pretrained_linear_model "./Experiments/imagenet100_htba_mocov2_ref_set_sd42/linear.pth.tar" \
+
+
+    
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
