@@ -873,26 +873,51 @@ class CLTrainer:
                 torch.norm(features, p=2) + 1e-8
             )
         elif mode == "svd_correlation":
-            # Use torch SVD so gradients flow and tensors stay on correct device.
             # Center features along channel dim
             X = features - features.mean(dim=0, keepdim=True)
 
-            # Prefer torch.linalg.svd when available (modern PyTorch)
-            if hasattr(torch.linalg, "svd"):
-                # U, S, Vh where Vh is the conjugate transpose of V
-                U, S, Vh = torch.linalg.svd(X, full_matrices=False)
-                eig_for_indexing = Vh[0:1]  # [1, C]
-            else:
-                # Fallback for older PyTorch: torch.svd returns U, S, V (not Vh)
-                U, S, V = torch.svd(X)
-                # V columns are right-singular vectors -> take first and transpose to [1, C]
-                eig_for_indexing = V[:, 0:1].t()
+            eig_for_indexing = None
+
+            # configurable power-iteration count (default 50)
+            power_iter = getattr(self.args, "svd_power_iter", 50)
+
+            # Try torch.linalg.svd first; on failure fall back to torch.svd, then power-iteration.
+            try:
+                if hasattr(torch.linalg, "svd"):
+                    U, S, Vh = torch.linalg.svd(X, full_matrices=False)
+                    eig_for_indexing = Vh[0:1]
+                else:
+                    U, S, V = torch.svd(X)
+                    eig_for_indexing = V[:, 0:1].t()
+            except Exception as e:
+                # Try legacy torch.svd as a fallback and log the issue
+                try:
+                    print(f"[WARNING] torch.linalg.svd failed: {e}; falling back to torch.svd", flush=True)
+                    U, S, V = torch.svd(X)
+                    eig_for_indexing = V[:, 0:1].t()
+                except Exception as e2:
+                    # power-iteration fallback on X^T X to find dominant right-singular vector
+                    print(
+                        f"[WARNING] torch.svd also failed: {e2}; using power-iteration fallback (iters={power_iter})",
+                        flush=True,
+                    )
+                    C = X.t().matmul(X)
+                    # random init
+                    v = torch.randn((C.size(1), 1), device=X.device, dtype=C.dtype)
+                    v = v / (v.norm() + 1e-12)
+                    for _ in range(int(power_iter)):
+                        v = C.matmul(v)
+                        denom = v.norm()
+                        if denom.item() == 0:
+                            break
+                        v = v / (denom + 1e-12)
+                    eig_for_indexing = v.t()
 
             # correlations between top right-singular vector and features
             corrs = eig_for_indexing.matmul(features.t())  # [1, bs*n_view]
 
             # minimize the variance of corrs to avoid concentrated correlation in few channels
-            loss = torch.var(corrs)  # shape [1], scalar loss value
+            loss = torch.var(corrs)
 
         else:
             raise ValueError(f"Unknown adaptive attack mode: {mode}")
