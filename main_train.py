@@ -418,7 +418,7 @@ parser.add_argument(
 parser.add_argument(
     "--svd_start_epoch",
     type=int,
-    default=80,
+    default=10,
     help="Epoch to start applying SVD-based adaptive loss (only relevant if mode is svd_correlation)",
 )
 

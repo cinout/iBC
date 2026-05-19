@@ -880,23 +880,27 @@ class CLTrainer:
 
             # Center features along channel dim
             X = features - features.mean(dim=0, keepdim=True)
-            cov = X.T @ X  # (d x d), symmetric PSD
 
             try:
-                # U, S, V = torch.linalg.svd(X, full_matrices=False)
+                _, _, V = torch.linalg.svd(X, full_matrices=False)
+                eig_for_indexing = V[0:1]
 
                 # More stable alternative to SVD on tall feature matrix
-                _, eigenvectors = torch.linalg.eigh(cov)  # always converges for PSD
+                # _, eigenvectors = torch.linalg.eigh(cov)  # always converges for PSD
+                # correlations between top right-singular vector and features
+                corrs = eig_for_indexing.matmul(features.t())  # [1, bs*n_view]
+
+                # minimize the variance of corrs to avoid concentrated correlation in few channels
+                loss = torch.var(corrs)
             except torch._C._LinAlgError:
                 print(f"[WARNING] torch.linalg.eigh failed", flush=True)
+                return torch.tensor(0.0, device=features.device)
                 # Fallback: add small jitter to break degeneracy
-                jitter = 1e-4 * torch.eye(X.shape[1], device=X.device)
+                # jitter = 1e-4 * torch.eye(X.shape[1], device=X.device)
 
                 # U, S, V = torch.linalg.svd(matrix_reg, full_matrices=False)
                 # eig_for_indexing = V[0:1]
-                _, eigenvectors = torch.linalg.eigh(cov + jitter)
-
-            eig_for_indexing = eigenvectors[:, -1]  # largest eigenvector, shape (d,)
+                # _, eigenvectors = torch.linalg.eigh(cov + jitter)
 
             # # configurable power-iteration count (default 10)
             # power_iter = getattr(self.args, "svd_power_iter", 10)
@@ -1012,12 +1016,6 @@ class CLTrainer:
             #                 getattr(self, "_svd_power_iter_total", 0) + actual_iters
             #             )
             #             eig_for_indexing = v.t()
-
-            # correlations between top right-singular vector and features
-            corrs = eig_for_indexing.matmul(features.t())  # [1, bs*n_view]
-
-            # minimize the variance of corrs to avoid concentrated correlation in few channels
-            loss = torch.var(corrs)
 
         else:
             raise ValueError(f"Unknown adaptive attack mode: {mode}")
