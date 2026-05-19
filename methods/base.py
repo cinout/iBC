@@ -374,14 +374,18 @@ class CLModel(nn.Module):
         self.arch = args.arch
         self.dataset = args.dataset
 
-        if "cifar" in self.dataset:
-            # CIFAR-variant Resnet is loaded
-            model_fun, feat_dim = model_dict_cifar[self.arch]
-            self.mlp_layers = 2
-        else:
-            # Original Resnet is loaded
+        if self.arch == "vit_b_16":
             model_fun, feat_dim = model_dict[self.arch]
             self.mlp_layers = 3
+        else:
+            if "cifar" in self.dataset:
+                # CIFAR-variant Resnet is loaded
+                model_fun, feat_dim = model_dict_cifar[self.arch]
+                self.mlp_layers = 2
+            else:
+                # Original Resnet is loaded
+                model_fun, feat_dim = model_dict[self.arch]
+                self.mlp_layers = 3
 
         self.model_generator = model_fun
         self.backbone = model_fun()

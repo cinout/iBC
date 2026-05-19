@@ -49,8 +49,13 @@ def update_seed(seed):
 
 
 def get_feat_dim(args):
-    if "cifar" in args.dataset:
+    # Prefer CIFAR-specific registry when available, otherwise fall back
+    # to the general model registry. This allows using backbones like ViT
+    # even when training on CIFAR datasets.
+    if args.arch in model_dict_cifar:
         _, feat_dim = model_dict_cifar[args.arch]
-    else:
+    elif args.arch in model_dict:
         _, feat_dim = model_dict[args.arch]
+    else:
+        raise KeyError(f"Unknown architecture '{args.arch}' for feat dim lookup")
     return feat_dim

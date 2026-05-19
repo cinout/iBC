@@ -68,6 +68,7 @@ Architecture & Optimization
 parser.add_argument(
     "--arch",
     default="resnet18",
+    choices=["resnet18", "vit_b_16"],
     type=str,
 )
 
@@ -648,6 +649,11 @@ def main(args):
 
 if __name__ == "__main__":
     args = parser.parse_args()
+
+    # If using a ViT backbone, ensure input image size is appropriate
+    if "vit_b_16" == args.arch.lower() and args.image_size < 224:
+        # ViT-B-16 expects larger spatial resolution (commonly 224)
+        args.image_size = 224
 
     args.saved_path = os.path.join(
         f"./{args.log_path}/{args.timestamp}_{args.dataset}_{args.trigger_type}_{args.method}_sd{args.ssl_pretrain_seed}"
