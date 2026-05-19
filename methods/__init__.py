@@ -25,9 +25,39 @@ def set_model(args):
                 m = base_encoder(**kwargs)
                 # alias `fc` to the classification head for compatibility
                 if hasattr(m, "heads"):
-                    m.fc = m.heads
+                    # torchvision ViT `heads` may be a Sequential(LayerNorm, Linear).
+                    # Find the final Linear module inside and use it as `fc` so
+                    # MoCo can access `.weight` as expected.
+                    heads = m.heads
+                    if isinstance(heads, nn.Sequential):
+                        # find last Linear in the sequential
+                        linear_layer = None
+                        for mod in reversed(list(heads)):
+                            if isinstance(mod, nn.Linear):
+                                linear_layer = mod
+                                break
+                        if linear_layer is not None:
+                            m.fc = linear_layer
+                        else:
+                            m.fc = nn.Identity()
+                    elif isinstance(heads, nn.Linear):
+                        m.fc = heads
+                    else:
+                        m.fc = nn.Identity()
                 elif hasattr(m, "classifier"):
-                    m.fc = m.classifier
+                    cls = m.classifier
+                    if isinstance(cls, nn.Linear):
+                        m.fc = cls
+                    elif isinstance(cls, nn.Sequential):
+                        linear_layer = None
+                        for mod in reversed(list(cls)):
+                            if isinstance(mod, nn.Linear):
+                                linear_layer = mod
+                                break
+                        if linear_layer is not None:
+                            m.fc = linear_layer
+                        else:
+                            m.fc = nn.Identity()
                 else:
                     m.fc = nn.Identity()
                 return m

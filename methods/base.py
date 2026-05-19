@@ -1020,11 +1020,6 @@ class CLTrainer:
                             base_loss + self.args.adaptive_attack_lambda * adaptive_loss
                         )
                     else:
-                        print(
-                            "arrive at epoch {} and iteration {} without adaptive loss".format(
-                                epoch, i
-                            )
-                        )
                         loss = base_loss
 
                     # update meters using correct batch size
