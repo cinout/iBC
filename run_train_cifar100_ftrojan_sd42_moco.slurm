@@ -38,6 +38,7 @@ python -u main_train.py \
     --method mocov2 \
     --trigger_type ftrojan \
     --arch vit_b_16 \
+   --pretrain_batch_size 64 \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
