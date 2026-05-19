@@ -1061,6 +1061,17 @@ class CLTrainer:
                         cl_losses.avg,
                     )
                 )
+            if (epoch + 1) % self.args.model_save_freq == 0 and training_required:
+                save_model(
+                    {
+                        "epoch": epoch + 1,
+                        "state_dict": model.state_dict(),
+                        "optimizer": optimizer.state_dict(),
+                    },
+                    filename=os.path.join(
+                        self.args.saved_path, f"encoder_epoch_{epoch + 1}.pth.tar"
+                    ),
+                )
 
         # save final model
         if training_required:
@@ -1072,23 +1083,6 @@ class CLTrainer:
                 },
                 filename=os.path.join(self.args.saved_path, "encoder.pth.tar"),
             )
-        # Summary of SVD/ fallback usage during training
-        randsvd_count = getattr(self, "_svd_randsvd_count", 0)
-        fallback_count = getattr(self, "_svd_fallback_count", 0)
-        power_calls = getattr(self, "_svd_power_iter_calls", 0)
-        power_total = getattr(self, "_svd_power_iter_total", 0)
-        avg_power_iters = (power_total / power_calls) if power_calls else 0
-
-        if randsvd_count or fallback_count or power_calls:
-            print("============ SVD Fallback Summary ============", flush=True)
-            print(f"Randomized SVD uses: {randsvd_count}", flush=True)
-            print(f"Power-iteration fallback calls: {fallback_count}", flush=True)
-            print(f"Power-iteration invocations: {power_calls}", flush=True)
-            print(f"Total power-iteration iterations used: {power_total}", flush=True)
-            print(
-                f"Average iterations per power call: {avg_power_iters:.2f}", flush=True
-            )
-            print("===============================================", flush=True)
 
         return model
 

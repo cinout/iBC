@@ -118,7 +118,8 @@ parser.add_argument("--saved_path", default="none", type=str, help="created ad h
 """
 Evaluation
 """
-parser.add_argument("--knn_eval_freq", default=5, type=int)
+parser.add_argument("--knn_eval_freq", default=10, type=int)
+parser.add_argument("--model_save_freq", default=100, type=int)
 
 
 """
