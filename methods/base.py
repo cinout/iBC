@@ -894,7 +894,7 @@ class CLTrainer:
                 # minimize the variance of corrs to avoid concentrated correlation in few channels
                 loss = torch.var(corrs)
             except torch._C._LinAlgError:
-                print(f"[WARNING] torch.linalg.eigh failed", flush=True)
+                # print(f"[WARNING] torch.linalg.eigh failed", flush=True)
                 # return a zero scalar matching `features` to avoid dtype/device/leaf mismatches
                 return None
                 # Fallback: add small jitter to break degeneracy
@@ -1117,6 +1117,11 @@ class CLTrainer:
                             base_loss + self.args.adaptive_attack_lambda * adaptive_loss
                         )
                     else:
+                        print(
+                            "arrive at epoch {} and iteration {} without adaptive loss".format(
+                                epoch, i
+                            )
+                        )
                         loss = base_loss
 
                     # update meters using correct batch size
