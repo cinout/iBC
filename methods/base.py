@@ -882,142 +882,41 @@ class CLTrainer:
             # Center features along channel dim
             X = features - features.mean(dim=0, keepdim=True)
 
+            # sanitize NaN/Inf early
+            if not torch.isfinite(X).all():
+                # either return zero loss or nan-to-num; returning zero is safest for stability
+                # (log here if you want to trace occurrences)
+                return None
+
+            # try SVD with safe fallbacks
             try:
                 _, _, V = torch.linalg.svd(X, full_matrices=False)
                 eig_for_indexing = V[0:1]
-
-                # More stable alternative to SVD on tall feature matrix
-                # _, eigenvectors = torch.linalg.eigh(cov)  # always converges for PSD
-                # correlations between top right-singular vector and features
                 corrs = eig_for_indexing.matmul(features.t())  # [1, bs*n_view]
 
                 # minimize the variance of corrs to avoid concentrated correlation in few channels
                 loss = torch.var(corrs)
-            except torch._C._LinAlgError:
-                # print(f"[WARNING] torch.linalg.eigh failed", flush=True)
-                # return a zero scalar matching `features` to avoid dtype/device/leaf mismatches
+            except Exception:
                 return None
-                # Fallback: add small jitter to break degeneracy
-                # jitter = 1e-4 * torch.eye(X.shape[1], device=X.device)
-
-                # U, S, V = torch.linalg.svd(matrix_reg, full_matrices=False)
-                # eig_for_indexing = V[0:1]
-                # _, eigenvectors = torch.linalg.eigh(cov + jitter)
-
-            # # configurable power-iteration count (default 10)
-            # power_iter = getattr(self.args, "svd_power_iter", 10)
-
-            # # Try torch.linalg.svd first; on failure fall back to torch.svd, then randomized SVD, then power-iteration.
-            # try:
-            #     if hasattr(torch.linalg, "svd"):
-            #         U, S, Vh = torch.linalg.svd(X, full_matrices=False)
-            #         eig_for_indexing = Vh[0:1]
-            #     else:
-            #         U, S, V = torch.svd(X)
-            #         eig_for_indexing = V[:, 0:1].t()
-            # except Exception as e:
-            #     # Try legacy torch.svd as a fallback and log the issue
-            #     try:
-            #         print(
-            #             f"[WARNING] torch.linalg.svd failed: falling back to torch.svd",
-            #             flush=True,
-            #         )
-            #         U, S, V = torch.svd(X)
-            #         eig_for_indexing = V[:, 0:1].t()
-            #     except Exception as e2:
-            #         # Try randomized SVD (Halko) as a faster approximate fallback
-            #         print(
-            #             f"[WARNING] torch.svd also failed: trying randomized SVD fallback",
-            #             flush=True,
-            #         )
-            #         try:
-            #             # parameters for randomized SVD
-            #             rand_rank = int(getattr(self.args, "svd_rand_rank", 4))
-            #             oversamples = int(getattr(self.args, "svd_rand_oversamples", 2))
-            #             r = max(2, rand_rank)
-            #             p = oversamples
-
-            #             # Omega: [C, r+p]
-            #             Omega = torch.randn(
-            #                 (X.shape[1], r + p), device=X.device, dtype=X.dtype
-            #             )
-            #             Y = X.matmul(Omega)  # [B, r+p]
-            #             # orthonormalize Y via QR
-            #             try:
-            #                 Q, _ = torch.qr(Y)
-            #             except Exception:
-            #                 Q, _ = torch.linalg.qr(Y)
-
-            #             Bsmall = Q.t().matmul(X)  # [r+p, C]
-            #             # SVD on small matrix
-            #             try:
-            #                 Ub, Sb, Vhb = torch.linalg.svd(Bsmall, full_matrices=False)
-            #             except Exception:
-            #                 Ub, Sb, Vhb = torch.svd(Bsmall)
-
-            #             # approximate top right-singular vector
-            #             eig_for_indexing = Vhb[0:1]
-            #             # increment randomized svd counter
-            #             self._svd_randsvd_count = (
-            #                 getattr(self, "_svd_randsvd_count", 0) + 1
-            #             )
-            #         except Exception as e3:
-            #             # power-iteration fallback using mat-vec (avoids forming C = X^T X)
-            #             print(
-            #                 f"[WARNING] randomized SVD failed: using power-iteration fallback (iters={power_iter})",
-            #                 flush=True,
-            #             )
-
-            #             # Initialize counters
-            #             self._svd_fallback_count = (
-            #                 getattr(self, "_svd_fallback_count", 0) + 1
-            #             )
-            #             self._svd_power_iter_calls = (
-            #                 getattr(self, "_svd_power_iter_calls", 0) + 1
-            #             )
-
-            #             # Initialize v: reuse previous estimate if available to speed up convergence
-            #             prev_v = getattr(self, "_last_svd_v", None)
-            #             if prev_v is not None and prev_v.shape[0] == X.shape[1]:
-            #                 v = prev_v.clone().to(X.device)
-            #             else:
-            #                 v = torch.randn(
-            #                     (X.shape[1], 1), device=X.device, dtype=X.dtype
-            #                 )
-            #             v = v / (v.norm() + 1e-12)
-
-            #             # Power iterations: v <- X^T (X v)  (cost ~ 2*B*C per iter)
-            #             last_v = None
-            #             actual_iters = 0
-            #             for it in range(int(power_iter)):
-            #                 Xv = X.matmul(v)  # [B,1]
-            #                 v = X.t().matmul(Xv)  # [C,1]
-            #                 denom = v.norm()
-            #                 if denom.item() == 0:
-            #                     break
-            #                 v = v / (denom + 1e-12)
-            #                 actual_iters += 1
-
-            #                 # check convergence via cosine similarity with previous v
-            #                 if last_v is not None:
-            #                     cos_sim = (v.view(-1).dot(last_v.view(-1))) / (
-            #                         v.norm() * last_v.norm() + 1e-12
-            #                     )
-            #                     if cos_sim > 1 - 1e-6:
-            #                         break
-            #                 last_v = v.clone()
-
-            #             # save for next call to warm-start
-            #             try:
-            #                 self._last_svd_v = v.detach().cpu()
-            #             except Exception:
-            #                 self._last_svd_v = None
-
-            #             # record iterations used
-            #             self._svd_power_iter_total = (
-            #                 getattr(self, "_svd_power_iter_total", 0) + actual_iters
-            #             )
-            #             eig_for_indexing = v.t()
+                # try:
+                #     # CPU fallback (more stable though slower)
+                #     X_cpu = X.detach().cpu()
+                #     _, _, V_cpu = torch.linalg.svd(X_cpu, full_matrices=False)
+                #     eig_for_indexing = V_cpu[0:1].to(X.device)
+                #     corrs = eig_for_indexing.matmul(features.t())  # [1, bs*n_view]
+                #     loss = torch.var(corrs)
+                # except Exception:
+                #     # # final fallback: eigendecomposition of X^T X with tiny jitter
+                #     # C = X.t().matmul(X)
+                #     # jitter = 1e-6 * torch.eye(
+                #     #     C.shape[0], device=C.device, dtype=C.dtype
+                #     # )
+                #     # try:
+                #     #     vals, vecs = torch.linalg.eigh(C + jitter)
+                #     #     eig_for_indexing = vecs[:, -1:].t()
+                #     # except Exception:
+                #     #     # give up for this batch
+                #     return None
 
         else:
             raise ValueError(f"Unknown adaptive attack mode: {mode}")
