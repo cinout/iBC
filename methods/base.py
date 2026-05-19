@@ -1188,6 +1188,12 @@ class CLTrainer:
             disable=hide_progress,
         ):
             data = data.to(device)
+            # If using ViT backbone and images are small (e.g., CIFAR 32), upsample to expected size
+            if hasattr(args, "arch") and "vit" in args.arch.lower():
+                expected_size = args.image_size
+                _, _, h, w = data.shape
+                if h != expected_size or w != expected_size:
+                    data = F.interpolate(data, size=(expected_size, expected_size), mode="bilinear", align_corners=False)
             data = self.normalize_transform(data)
 
             with torch.no_grad():
@@ -1216,6 +1222,11 @@ class CLTrainer:
             data, target, _ = content
 
             data, target = data.to(device), target.to(device)
+            if hasattr(args, "arch") and "vit" in args.arch.lower():
+                expected_size = args.image_size
+                _, _, h, w = data.shape
+                if h != expected_size or w != expected_size:
+                    data = F.interpolate(data, size=(expected_size, expected_size), mode="bilinear", align_corners=False)
             data = self.normalize_transform(data)
 
             with torch.no_grad():
@@ -1251,6 +1262,11 @@ class CLTrainer:
                 original_label.to(device),
             )
 
+            if hasattr(args, "arch") and "vit" in args.arch.lower():
+                expected_size = args.image_size
+                _, _, h, w = data.shape
+                if h != expected_size or w != expected_size:
+                    data = F.interpolate(data, size=(expected_size, expected_size), mode="bilinear", align_corners=False)
             data = self.normalize_transform(data)
 
             valid_indices = original_label != args.target_class
