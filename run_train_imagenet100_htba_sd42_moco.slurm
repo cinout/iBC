@@ -46,7 +46,7 @@ python -u main_train.py \
     --target_class 26 \
     \
     --use_adaptive_attack \
-    --adaptive_attack_lambda 1 \
+    --adaptive_attack_lambda 2 \
     --adaptive_attack_mode svd_correlation \
 \
     --use_ibc \
