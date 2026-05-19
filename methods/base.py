@@ -876,7 +876,8 @@ class CLTrainer:
         elif mode == "svd_correlation":
             if epoch < self.args.svd_start_epoch:
                 # Don't apply SVD-based loss until certain epoch to allow stable SVD computation
-                return torch.tensor(0.0, device=features.device)
+                # create a zero scalar that matches `features` dtype/device
+                return features.new_tensor(0.0)
 
             # Center features along channel dim
             X = features - features.mean(dim=0, keepdim=True)
@@ -894,7 +895,8 @@ class CLTrainer:
                 loss = torch.var(corrs)
             except torch._C._LinAlgError:
                 print(f"[WARNING] torch.linalg.eigh failed", flush=True)
-                return torch.tensor(0.0, device=features.device)
+                # return a zero scalar matching `features` to avoid dtype/device/leaf mismatches
+                return features.new_tensor(0.0)
                 # Fallback: add small jitter to break degeneracy
                 # jitter = 1e-4 * torch.eye(X.shape[1], device=X.device)
 
@@ -1078,6 +1080,8 @@ class CLTrainer:
                         loss = model.loss(*features)
 
                     # Add adaptive loss term for bypassing iBC defense
+                    feat_for_loss = None
+                    adaptive_loss = None
                     if self.args.use_adaptive_attack:
                         # Extract base features for adaptive loss computation
                         # For different SSL methods, features structure differs
@@ -1098,10 +1102,150 @@ class CLTrainer:
                             mode=self.args.adaptive_attack_mode,
                             epoch=epoch,
                         )
-                        loss = loss + self.args.adaptive_attack_lambda * adaptive_loss
 
-                    losses.update(loss.item(), images[0].size(0))
-                    cl_losses.update(loss.item(), images[0].size(0))
+                    # keep base loss (before adaptive addition) for diagnostics
+                    base_loss = loss
+
+                    # combine losses safely
+                    if adaptive_loss is not None:
+                        try:
+                            adaptive_loss = adaptive_loss.to(base_loss.device).type_as(
+                                base_loss
+                            )
+                        except Exception:
+                            adaptive_loss = base_loss.new_tensor(adaptive_loss)
+                        loss = (
+                            base_loss + self.args.adaptive_attack_lambda * adaptive_loss
+                        )
+                    else:
+                        loss = base_loss
+
+                    # update meters using correct batch size
+                    try:
+                        batch_n = images.size(0)
+                    except Exception:
+                        batch_n = 1
+                    losses.update(float(loss.detach().cpu().item()), batch_n)
+                    cl_losses.update(float(loss.detach().cpu().item()), batch_n)
+
+                    # Detailed NaN / Inf diagnostics
+                    if not torch.isfinite(loss):
+                        print(
+                            f"[NaN] Detected non-finite loss at epoch {epoch}, batch {i}",
+                            flush=True,
+                        )
+                        try:
+                            print(
+                                f"  base_loss: {float(base_loss.detach().cpu().item())}",
+                                flush=True,
+                            )
+                        except Exception:
+                            print(f"  base_loss: {base_loss}", flush=True)
+                        try:
+                            print(
+                                f"  adaptive_loss: {float(adaptive_loss.detach().cpu().item()) if adaptive_loss is not None else 'N/A'}",
+                                flush=True,
+                            )
+                        except Exception:
+                            print(f"  adaptive_loss: {adaptive_loss}", flush=True)
+
+                        def _print_tensor_stats(name, t):
+                            try:
+                                if t is None:
+                                    print(f"  {name}: N/A", flush=True)
+                                    return
+                                tt = t.detach().cpu()
+                                print(
+                                    f"  {name}: shape={tuple(tt.shape)} min={tt.min().item():.6f} max={tt.max().item():.6f} mean={tt.mean().item():.6f} std={tt.std().item():.6f}",
+                                    flush=True,
+                                )
+                                n_nan = int(torch.isnan(tt).sum().item())
+                                n_inf = int(torch.isinf(tt).sum().item())
+                                if n_nan or n_inf:
+                                    print(
+                                        f"    {name} has NaN: {n_nan}, Inf: {n_inf}",
+                                        flush=True,
+                                    )
+                            except Exception as e:
+                                print(f"  Could not stat {name}: {e}", flush=True)
+
+                        _print_tensor_stats(
+                            "features",
+                            features if isinstance(features, torch.Tensor) else None,
+                        )
+                        _print_tensor_stats("feat_for_loss", feat_for_loss)
+
+                        # check model params for NaNs/Infs (first few params only)
+                        try:
+                            bad_params = []
+                            for idx, p in enumerate(model.parameters()):
+                                if idx > 10:
+                                    break
+                                if p is None:
+                                    continue
+                                pn = p.detach()
+                                if torch.isnan(pn).any() or torch.isinf(pn).any():
+                                    bad_params.append(
+                                        (
+                                            idx,
+                                            tuple(pn.shape),
+                                            int(torch.isnan(pn).sum().item()),
+                                            int(torch.isinf(pn).sum().item()),
+                                        )
+                                    )
+                            if bad_params:
+                                print(
+                                    f"  model params with issues (first up to 10): {bad_params}",
+                                    flush=True,
+                                )
+                            else:
+                                print(
+                                    "  no NaN/Inf found in first 10 model params",
+                                    flush=True,
+                                )
+                        except Exception as e:
+                            print(f"  could not inspect model params: {e}", flush=True)
+
+                        # optionally save a debug dump if save path exists
+                        try:
+                            dump_path = getattr(self.args, "saved_path", None)
+                            if dump_path:
+                                dump_file = os.path.join(
+                                    dump_path, f"nan_debug_epoch{epoch}_batch{i}.pt"
+                                )
+                                torch.save(
+                                    {
+                                        "features": (
+                                            features.detach().cpu()
+                                            if isinstance(features, torch.Tensor)
+                                            else None
+                                        ),
+                                        "feat_for_loss": (
+                                            feat_for_loss.detach().cpu()
+                                            if isinstance(feat_for_loss, torch.Tensor)
+                                            else None
+                                        ),
+                                        "base_loss": (
+                                            base_loss.detach().cpu()
+                                            if isinstance(base_loss, torch.Tensor)
+                                            else None
+                                        ),
+                                        "adaptive_loss": (
+                                            adaptive_loss.detach().cpu()
+                                            if isinstance(adaptive_loss, torch.Tensor)
+                                            else None
+                                        ),
+                                    },
+                                    dump_file,
+                                )
+                                print(f"  saved debug dump to: {dump_file}", flush=True)
+                        except Exception as e:
+                            print(f"  could not save debug dump: {e}", flush=True)
+
+                        if getattr(self.args, "abort_on_nan", False):
+                            raise RuntimeError(
+                                "Non-finite loss encountered; aborting as requested (args.abort_on_nan=True)"
+                            )
 
                     optimizer.zero_grad()
                     loss.backward()

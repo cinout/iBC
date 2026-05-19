@@ -7,9 +7,7 @@ from pyparsing import Dict, Optional
 
 # FIXME: update
 file_names = [
-    "results_ada_entro_0.2",
-    "results_ada_entro_0.5",
-    "results_ada_entro_1",
+    "results_ada_entro_2",
 ]
 
 for file_name in file_names:
