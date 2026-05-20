@@ -21,7 +21,7 @@
 ###### "ntasks-per-node" should have same value as "res=gpu:"
 
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=40G
+#SBATCH --mem=80G
 
 export WORLD_SIZE=2   ####TODO: update world size: nodes x ntasks-per-node
 export MASTER_PORT=12340
@@ -41,6 +41,7 @@ srun python -u main_train.py \
     --trigger_type ftrojan \
     --arch vit_b_16 \
    --pretrain_batch_size 64 \
+   --pretrain_epochs 60 \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
