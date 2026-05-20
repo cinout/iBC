@@ -15,6 +15,8 @@ from ssl_cleanse.ssl_cleanse import (
 )
 import torch.nn as nn
 import numpy as np
+import torch
+import torch.distributed as dist
 
 parser = argparse.ArgumentParser()
 
@@ -428,6 +430,27 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def main(args):
+    # Initialize distributed process group if launched under srun/torchrun
+    world_size_env = int(os.environ.get("WORLD_SIZE", "1"))
+    is_distributed_env = world_size_env > 1
+
+    if is_distributed_env and not dist.is_initialized():
+        # env:// initialization reads WORLD_SIZE, RANK, MASTER_ADDR, MASTER_PORT
+        dist.init_process_group(
+            backend=("nccl" if torch.cuda.is_available() else "gloo"),
+            init_method="env://",
+        )
+
+    # set per-process device if distributed
+    if dist.is_initialized():
+        local_rank = int(
+            os.environ.get("LOCAL_RANK", os.environ.get("SLURM_LOCALID", 0))
+        )
+        torch.cuda.set_device(local_rank)
+        globals()["device"] = (
+            f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu"
+        )
+
     update_seed(args.ssl_pretrain_seed)
 
     torch.backends.cudnn.deterministic = True
@@ -446,6 +469,14 @@ def main(args):
         )
         model.load_state_dict(pretrained_state_dict["state_dict"], strict=True)
     model = model.to(device)
+    # Wrap model with DDP if distributed
+    if dist.is_initialized():
+        local_rank = int(
+            os.environ.get("LOCAL_RANK", os.environ.get("SLURM_LOCALID", 0))
+        )
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=[local_rank] if torch.cuda.is_available() else None
+        )
 
     """
     Create Dataset/DataLoader
@@ -498,6 +529,14 @@ def main(args):
 
     # SSL attack and KNN Evaluation [Poisoned Model]
     trainer.train_freq(model, optimizer, train_transform, poison)
+
+    # synchronize and run only rank 0 for downstream evaluation and baselines
+    if dist.is_initialized():
+        dist.barrier()
+        rank = int(os.environ.get("RANK", "0"))
+        if rank != 0:
+            return
+
     backbone = extract_backbone(args.method, model)
 
     # Linear Probe and Evaluation [Poisoned Model]
@@ -664,7 +703,11 @@ if __name__ == "__main__":
     if args.trigger_path == "":
         args.trigger_path = f"{args.timestamp}_trigger_estimation_{args.method}_{args.dataset}_{args.trigger_type}_SD{args.ssl_cleanse_seed}"
 
-    if not os.path.exists(args.saved_path):
-        os.makedirs(args.saved_path)
+    # create saved_path only on rank 0 to avoid races when using srun
+    world_size_env = int(os.environ.get("WORLD_SIZE", "1"))
+    is_distributed_env = world_size_env > 1
+    rank_env = int(os.environ.get("RANK", "0")) if is_distributed_env else 0
+    if not os.path.exists(args.saved_path) and rank_env == 0:
+        os.makedirs(args.saved_path, exist_ok=True)
 
     main(args)

@@ -4,6 +4,7 @@ import time
 import torch.nn as nn
 import torch.optim as optim
 import torch
+import torch.distributed as dist
 import numpy as np
 from bcu.distillation import distillation
 from mimic.model_train import mimic_model_train
@@ -539,17 +540,21 @@ class CLTrainer:
                 student_hook_info,
             )
             if epoch % 1000 == 0:
-                torch.save(
-                    {
-                        "epoch": epoch,
-                        "state_dict": student.state_dict(),
-                        "optimizer": optimizer.state_dict(),
-                    },
-                    os.path.join(self.args.saved_path)
-                    + "mimic_student_model_ep"
-                    + str(epoch)
-                    + ".pth",
-                )
+                is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+                if is_main:
+                    torch.save(
+                        {
+                            "epoch": epoch,
+                            "state_dict": student.state_dict(),
+                            "optimizer": optimizer.state_dict(),
+                        },
+                        os.path.join(self.args.saved_path)
+                        + "mimic_student_model_ep"
+                        + str(epoch)
+                        + ".pth",
+                    )
+                if dist.is_initialized():
+                    dist.barrier()
 
     """
     Baseline: RNP (ICML 2023), called when args.use_rnp==True
@@ -777,10 +782,14 @@ class CLTrainer:
                 )
                 lr_scheduler.step()
 
-            save_model(
-                linear.state_dict(),
-                filename=os.path.join(self.args.saved_path, "linear.pth.tar"),
-            )
+            is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+            if is_main:
+                save_model(
+                    linear.state_dict(),
+                    filename=os.path.join(self.args.saved_path, "linear.pth.tar"),
+                )
+            if dist.is_initialized():
+                dist.barrier()
 
         # evaluation of linear (uncleansed)
         backbone.eval()
@@ -963,6 +972,14 @@ class CLTrainer:
             start = time.time()
 
             # SSL TRAIN
+            # set epoch for DistributedSampler
+            try:
+                if hasattr(train_loader, "sampler") and isinstance(
+                    train_loader.sampler, torch.utils.data.DistributedSampler
+                ):
+                    train_loader.sampler.set_epoch(epoch)
+            except Exception:
+                pass
             if training_required:
                 for i, content in enumerate(train_loader):
                     images = content[0]
@@ -1062,27 +1079,45 @@ class CLTrainer:
                     )
                 )
             if (epoch + 1) % self.args.model_save_freq == 0 and training_required:
+                is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+                state_dict_to_save = (
+                    model.module.state_dict()
+                    if hasattr(model, "module")
+                    else model.state_dict()
+                )
+                if is_main:
+                    save_model(
+                        {
+                            "epoch": epoch + 1,
+                            "state_dict": state_dict_to_save,
+                            "optimizer": optimizer.state_dict(),
+                        },
+                        filename=os.path.join(
+                            self.args.saved_path, f"encoder_epoch_{epoch + 1}.pth.tar"
+                        ),
+                    )
+                if dist.is_initialized():
+                    dist.barrier()
+
+        # save final model (only on main rank)
+        if training_required:
+            is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+            state_dict_to_save = (
+                model.module.state_dict()
+                if hasattr(model, "module")
+                else model.state_dict()
+            )
+            if is_main:
                 save_model(
                     {
                         "epoch": epoch + 1,
-                        "state_dict": model.state_dict(),
+                        "state_dict": state_dict_to_save,
                         "optimizer": optimizer.state_dict(),
                     },
-                    filename=os.path.join(
-                        self.args.saved_path, f"encoder_epoch_{epoch + 1}.pth.tar"
-                    ),
+                    filename=os.path.join(self.args.saved_path, "encoder.pth.tar"),
                 )
-
-        # save final model
-        if training_required:
-            save_model(
-                {
-                    "epoch": epoch + 1,
-                    "state_dict": model.state_dict(),
-                    "optimizer": optimizer.state_dict(),
-                },
-                filename=os.path.join(self.args.saved_path, "encoder.pth.tar"),
-            )
+            if dist.is_initialized():
+                dist.barrier()
 
         return model
 

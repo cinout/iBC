@@ -9,11 +9,17 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def extract_backbone(method, model):
+    # unwrap DistributedDataParallel if necessary
+    if hasattr(model, "module"):
+        model_module = model.module
+    else:
+        model_module = model
+
     if method == "mocov2":
-        backbone = copy.deepcopy(model.encoder_q)
+        backbone = copy.deepcopy(model_module.encoder_q)
         backbone.fc = nn.Sequential()
     else:
-        backbone = copy.deepcopy(model.backbone)
+        backbone = copy.deepcopy(model_module.backbone)
     return backbone
 
 

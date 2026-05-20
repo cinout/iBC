@@ -298,18 +298,21 @@ class PoisonAgent:
         memory_index = torch.tensor(list(range(len(x_memory_tensor))), dtype=torch.long)
 
         # contain both CLEAN and a portion of poisoned images
+        # use DistributedSampler when running under DDP
+        train_dataset_obj = TensorDataset(
+            x_train_tensor, train_is_poisoned, y_train_tensor, train_index
+        )
+        train_sampler = None
+        if torch.distributed.is_initialized():
+            train_sampler = torch.utils.data.DistributedSampler(
+                train_dataset_obj, shuffle=True
+            )
+
         train_loader = DataLoader(
-            (
-                TensorDataset(
-                    x_train_tensor,
-                    train_is_poisoned,
-                    y_train_tensor,
-                    train_index,
-                )
-            ),
+            train_dataset_obj,
             batch_size=self.args.pretrain_batch_size,
-            sampler=None,
-            shuffle=True,
+            sampler=train_sampler,
+            shuffle=(train_sampler is None),
         )
 
         # clean validation set
@@ -329,10 +332,21 @@ class PoisonAgent:
         )
 
         # memory set is clean
+        # memory loader: use DistributedSampler in DDP jobs
+        memory_dataset_obj = TensorDataset(
+            x_memory_tensor, y_memory_tensor, memory_index
+        )
+        memory_sampler = None
+        if torch.distributed.is_initialized():
+            memory_sampler = torch.utils.data.DistributedSampler(
+                memory_dataset_obj, shuffle=False
+            )
+
         memory_loader = DataLoader(
-            TensorDataset(x_memory_tensor, y_memory_tensor, memory_index),
+            memory_dataset_obj,
             batch_size=self.args.linear_probe_batch_size,
-            shuffle=False,
+            sampler=memory_sampler,
+            shuffle=(memory_sampler is None),
         )
 
         # create 1% train probe (reference) set
@@ -459,10 +473,20 @@ def set_aug_diff(args):
         raise NotImplementedError
 
     # memory loader is clean train set without shuffle, replaced later in the PoisonAgent step
+    memory_sampler = None
+    try:
+        if torch.distributed.is_initialized():
+            memory_sampler = torch.utils.data.DistributedSampler(
+                memory_dataset, shuffle=False
+            )
+    except Exception:
+        memory_sampler = None
+
     memory_loader = torch.utils.data.DataLoader(
         memory_dataset,
         512,
-        shuffle=False,
+        sampler=memory_sampler,
+        shuffle=(memory_sampler is None),
         num_workers=args.num_workers,
         pin_memory=True,
     )
