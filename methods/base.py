@@ -1193,7 +1193,12 @@ class CLTrainer:
                 expected_size = args.image_size
                 _, _, h, w = data.shape
                 if h != expected_size or w != expected_size:
-                    data = F.interpolate(data, size=(expected_size, expected_size), mode="bilinear", align_corners=False)
+                    data = F.interpolate(
+                        data,
+                        size=(expected_size, expected_size),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
             data = self.normalize_transform(data)
 
             with torch.no_grad():
@@ -1226,7 +1231,12 @@ class CLTrainer:
                 expected_size = args.image_size
                 _, _, h, w = data.shape
                 if h != expected_size or w != expected_size:
-                    data = F.interpolate(data, size=(expected_size, expected_size), mode="bilinear", align_corners=False)
+                    data = F.interpolate(
+                        data,
+                        size=(expected_size, expected_size),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
             data = self.normalize_transform(data)
 
             with torch.no_grad():
@@ -1266,7 +1276,12 @@ class CLTrainer:
                 expected_size = args.image_size
                 _, _, h, w = data.shape
                 if h != expected_size or w != expected_size:
-                    data = F.interpolate(data, size=(expected_size, expected_size), mode="bilinear", align_corners=False)
+                    data = F.interpolate(
+                        data,
+                        size=(expected_size, expected_size),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
             data = self.normalize_transform(data)
 
             valid_indices = original_label != args.target_class
