@@ -988,12 +988,17 @@ class CLTrainer:
 
                     features = model(v1, v2)
 
+                    if hasattr(model, "module"):
+                        model_module = model.module
+                    else:
+                        model_module = model
+
                     if self.args.method == "simclr":
-                        loss = model.supConLoss(features)
+                        loss = model_module.supConLoss(features)
                     elif self.args.method == "byol":
-                        loss = model.negcos(*features)
+                        loss = model_module.negcos(*features)
                     elif self.args.method == "mocov2":
-                        loss = model.loss(*features)
+                        loss = model_module.loss(*features)
 
                     # Add adaptive loss term for bypassing iBC defense
                     adaptive_loss = None

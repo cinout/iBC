@@ -313,6 +313,7 @@ class PoisonAgent:
             batch_size=self.args.pretrain_batch_size,
             sampler=train_sampler,
             shuffle=(train_sampler is None),
+            drop_last=True if self.args.distributed else False,
         )
 
         # clean validation set
@@ -331,8 +332,7 @@ class PoisonAgent:
             shuffle=False,
         )
 
-        # memory set is clean
-        # memory loader: use DistributedSampler in DDP jobs
+        # memory set is clean train set, used for kNN classifier, without shuffle
         memory_dataset_obj = TensorDataset(
             x_memory_tensor, y_memory_tensor, memory_index
         )
@@ -347,6 +347,7 @@ class PoisonAgent:
             batch_size=self.args.linear_probe_batch_size,
             sampler=memory_sampler,
             shuffle=(memory_sampler is None),
+            # TODO: drop_last for memory_loader? since kNN needs all images, maybe not drop_last to keep all data
         )
 
         # create 1% train probe (reference) set
