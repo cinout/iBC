@@ -487,17 +487,15 @@ def main(args):
         model.load_state_dict(pretrained_state_dict["state_dict"], strict=True)
     model = model.to(device)
 
-    # Wrap model with DDP if distributed
+    # Wrap model with DDP if distributed (do not enable find_unused_parameters)
     if args.distributed:
         if args.gpu is None:
             model.cuda()
-            model = torch.nn.parallel.DistributedDataParallel(
-                model, find_unused_parameters=True
-            )
+            model = torch.nn.parallel.DistributedDataParallel(model)
         else:
             model.cuda(args.gpu)
             model = torch.nn.parallel.DistributedDataParallel(
-                model, device_ids=[args.gpu], find_unused_parameters=True
+                model, device_ids=[args.gpu]
             )
 
     """
@@ -545,8 +543,10 @@ def main(args):
     Train and Evaluate
     """
 
+    # Optimize only parameters that require gradients (exclude momentum encoder)
+    trainable_params = [p for p in model.parameters() if p.requires_grad]
     optimizer = optim.SGD(
-        model.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.wd
+        trainable_params, lr=args.lr, momentum=0.9, weight_decay=args.wd
     )
 
     # SSL attack and KNN Evaluation [Poisoned Model]

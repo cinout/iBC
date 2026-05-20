@@ -45,6 +45,14 @@ class BYOL(CLModel):
         self.encoder_q = nn.Sequential(self.backbone, self.projector_q)
         self.encoder_k = nn.Sequential(self.backbone_k, self.projector_k)
 
+        # Momentum encoder (encoder_k and projector_k) should not receive gradients
+        # and must be excluded from optimizer/DDP reductions. Mark their params
+        # as not requiring grad.
+        for p in self.encoder_k.parameters():
+            p.requires_grad = False
+        for p in self.projector_k.parameters():
+            p.requires_grad = False
+
     @torch.no_grad()
     def _momentum_update_key_encoder(self):
         """

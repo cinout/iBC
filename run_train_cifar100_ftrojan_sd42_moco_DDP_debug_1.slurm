@@ -37,7 +37,7 @@ eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 srun python -u main_train.py \
-    --method byol \
+    --method mocov2 \
     --trigger_type ftrojan \
     --arch vit_b_16 \
    --pretrain_batch_size 64 \
