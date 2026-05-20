@@ -540,7 +540,7 @@ class CLTrainer:
                 student_hook_info,
             )
             if epoch % 1000 == 0:
-                is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+                is_main = (not self.args.distributed) or (dist.get_rank() == 0)
                 if is_main:
                     torch.save(
                         {
@@ -782,7 +782,7 @@ class CLTrainer:
                 )
                 lr_scheduler.step()
 
-            is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+            is_main = (not self.args.distributed) or (dist.get_rank() == 0)
             if is_main:
                 save_model(
                     linear.state_dict(),
@@ -972,14 +972,10 @@ class CLTrainer:
             start = time.time()
 
             # SSL TRAIN
-            # set epoch for DistributedSampler
-            try:
-                if hasattr(train_loader, "sampler") and isinstance(
-                    train_loader.sampler, torch.utils.data.DistributedSampler
-                ):
-                    train_loader.sampler.set_epoch(epoch)
-            except Exception:
-                pass
+            if isinstance(train_loader.sampler, torch.utils.data.DistributedSampler):
+                # calling the set_epoch() method at the beginning of each epoch before creating the DataLoader iterator is necessary to make shuffling work properly across multiple epochs. Otherwise, the same ordering will be always used.
+                train_loader.sampler.set_epoch(epoch)
+
             if training_required:
                 for i, content in enumerate(train_loader):
                     images = content[0]
@@ -1079,7 +1075,7 @@ class CLTrainer:
                     )
                 )
             if (epoch + 1) % self.args.model_save_freq == 0 and training_required:
-                is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+                is_main = (not self.args.distributed) or (dist.get_rank() == 0)
                 state_dict_to_save = (
                     model.module.state_dict()
                     if hasattr(model, "module")
@@ -1099,9 +1095,9 @@ class CLTrainer:
                 if dist.is_initialized():
                     dist.barrier()
 
-        # save final model (only on main rank)
+        # save final model
         if training_required:
-            is_main = (not dist.is_initialized()) or (dist.get_rank() == 0)
+            is_main = (not self.args.distributed) or (dist.get_rank() == 0)
             state_dict_to_save = (
                 model.module.state_dict()
                 if hasattr(model, "module")
@@ -1116,6 +1112,7 @@ class CLTrainer:
                     },
                     filename=os.path.join(self.args.saved_path, "encoder.pth.tar"),
                 )
+            # TODO:
             if dist.is_initialized():
                 dist.barrier()
 

@@ -17,8 +17,47 @@ import torch.nn as nn
 import numpy as np
 import torch
 import torch.distributed as dist
+import argparse, builtins
 
 parser = argparse.ArgumentParser()
+
+"""
+DDP
+"""
+parser.add_argument(
+    "--world_size",
+    default=-1,
+    type=int,
+    help="number of processes for distributed training",
+)
+parser.add_argument(
+    "--global_rank",
+    default=-1,
+    type=int,
+    help="global rank for distributed training",
+)
+parser.add_argument(
+    "--local_rank",
+    default=-1,
+    type=int,
+    help="local rank for torch.distributed.launch training",
+)
+parser.add_argument(
+    "--gpu",
+    default=None,
+    type=int,
+    help="local rank for slurm training (c.f. local_rank)",
+)
+parser.add_argument(
+    "--dist_url",
+    default="env://",
+    type=str,
+    help="url used to set up distributed training",
+)
+parser.add_argument(
+    "--dist_backend", default="nccl", type=str, help="distributed backend"
+)
+
 
 """
 Pretrained Models
@@ -168,7 +207,6 @@ parser.add_argument(
     action="store_true",
     help="apply channel removal strategy",
 )
-# TODO: update this
 parser.add_argument("--ss_aug_option", type=int, default=0)
 parser.add_argument("--trigger_channel_removal_seed", default=42, type=int)
 parser.add_argument(
@@ -430,56 +468,6 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def main(args):
-    # Populate torch.distributed expected env vars from SLURM when necessary
-    # This allows launching with `srun python -u main_train.py ...`.
-    if "SLURM_PROCID" in os.environ and "RANK" not in os.environ:
-        os.environ["RANK"] = os.environ["SLURM_PROCID"]
-    if "SLURM_LOCALID" in os.environ and "LOCAL_RANK" not in os.environ:
-        os.environ["LOCAL_RANK"] = os.environ["SLURM_LOCALID"]
-    if "SLURM_NTASKS" in os.environ and "WORLD_SIZE" not in os.environ:
-        os.environ["WORLD_SIZE"] = os.environ["SLURM_NTASKS"]
-
-    # Derive MASTER_ADDR from SLURM_JOB_NODELIST if not provided
-    if "MASTER_ADDR" not in os.environ and "SLURM_JOB_NODELIST" in os.environ:
-        try:
-            import subprocess
-
-            master_addr = (
-                subprocess.check_output(
-                    ["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]]
-                )
-                .decode()
-                .split()[0]
-            )
-            os.environ["MASTER_ADDR"] = master_addr
-        except Exception:
-            pass
-
-    # Ensure MASTER_PORT has a default if not set
-    if "MASTER_PORT" not in os.environ:
-        os.environ["MASTER_PORT"] = os.environ.get("MASTER_PORT", "12355")
-
-    # Initialize distributed process group if launched under srun/torchrun
-    world_size_env = int(os.environ.get("WORLD_SIZE", "1"))
-    is_distributed_env = world_size_env > 1
-
-    if is_distributed_env and not dist.is_initialized():
-        # env:// initialization reads WORLD_SIZE, RANK, MASTER_ADDR, MASTER_PORT
-        dist.init_process_group(
-            backend=("nccl" if torch.cuda.is_available() else "gloo"),
-            init_method="env://",
-        )
-
-    # set per-process device if distributed
-    if dist.is_initialized():
-        local_rank = int(
-            os.environ.get("LOCAL_RANK", os.environ.get("SLURM_LOCALID", 0))
-        )
-        torch.cuda.set_device(local_rank)
-        globals()["device"] = (
-            f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu"
-        )
-
     update_seed(args.ssl_pretrain_seed)
 
     torch.backends.cudnn.deterministic = True
@@ -498,14 +486,17 @@ def main(args):
         )
         model.load_state_dict(pretrained_state_dict["state_dict"], strict=True)
     model = model.to(device)
+
     # Wrap model with DDP if distributed
-    if dist.is_initialized():
-        local_rank = int(
-            os.environ.get("LOCAL_RANK", os.environ.get("SLURM_LOCALID", 0))
-        )
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[local_rank] if torch.cuda.is_available() else None
-        )
+    if args.distributed:
+        if args.gpu is None:
+            model.cuda()
+            model = torch.nn.parallel.DistributedDataParallel(model)
+        else:
+            model.cuda(args.gpu)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, device_ids=[args.gpu]
+            )
 
     """
     Create Dataset/DataLoader
@@ -559,11 +550,13 @@ def main(args):
     # SSL attack and KNN Evaluation [Poisoned Model]
     trainer.train_freq(model, optimizer, train_transform, poison)
 
+    # TODO:
     # synchronize and run only rank 0 for downstream evaluation and baselines
     if dist.is_initialized():
         dist.barrier()
-        rank = int(os.environ.get("RANK", "0"))
-        if rank != 0:
+
+        is_main = (not args.distributed) or (dist.get_rank() == 0)
+        if not is_main:
             return
 
     backbone = extract_backbone(args.method, model)
@@ -719,6 +712,37 @@ def main(args):
 if __name__ == "__main__":
     args = parser.parse_args()
 
+    if "WORLD_SIZE" in os.environ:
+        args.world_size = int(os.environ["WORLD_SIZE"])
+
+    args.distributed = args.world_size > 1
+    ngpus_per_node = torch.cuda.device_count()
+    torch.backends.cudnn.benchmark = True
+
+    if args.distributed:
+        if args.local_rank != -1:  # for torch.distributed.launch
+            args.global_rank = args.local_rank
+            args.gpu = args.local_rank
+        elif "SLURM_PROCID" in os.environ:  # for slurm scheduler
+            args.global_rank = int(os.environ["SLURM_PROCID"])
+            args.gpu = args.global_rank % ngpus_per_node
+        dist.init_process_group(
+            backend=args.dist_backend,
+            init_method=args.dist_url,
+            world_size=args.world_size,
+            rank=args.global_rank,
+        )
+        if args.gpu is not None:
+            torch.cuda.set_device(args.gpu)
+
+        # suppress printing if not on master gpu
+        if args.global_rank != 0:
+
+            def print_pass(*args):
+                pass
+
+            builtins.print = print_pass
+
     # If using a ViT backbone, ensure input image size is appropriate
     if "vit_b_16" == args.arch.lower() and args.image_size < 224:
         # ViT-B-16 expects larger spatial resolution (commonly 224)
@@ -732,11 +756,9 @@ if __name__ == "__main__":
     if args.trigger_path == "":
         args.trigger_path = f"{args.timestamp}_trigger_estimation_{args.method}_{args.dataset}_{args.trigger_type}_SD{args.ssl_cleanse_seed}"
 
-    # create saved_path only on rank 0 to avoid races when using srun
-    world_size_env = int(os.environ.get("WORLD_SIZE", "1"))
-    is_distributed_env = world_size_env > 1
-    rank_env = int(os.environ.get("RANK", "0")) if is_distributed_env else 0
-    if not os.path.exists(args.saved_path) and rank_env == 0:
+    if not os.path.exists(args.saved_path) and (
+        (not args.distributed) or (dist.get_rank() == 0)
+    ):
         os.makedirs(args.saved_path, exist_ok=True)
 
     main(args)

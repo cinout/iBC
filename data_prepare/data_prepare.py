@@ -298,12 +298,12 @@ class PoisonAgent:
         memory_index = torch.tensor(list(range(len(x_memory_tensor))), dtype=torch.long)
 
         # contain both CLEAN and a portion of poisoned images
-        # use DistributedSampler when running under DDP
+
         train_dataset_obj = TensorDataset(
             x_train_tensor, train_is_poisoned, y_train_tensor, train_index
         )
         train_sampler = None
-        if torch.distributed.is_initialized():
+        if self.args.distributed:
             train_sampler = torch.utils.data.DistributedSampler(
                 train_dataset_obj, shuffle=True
             )
@@ -337,7 +337,7 @@ class PoisonAgent:
             x_memory_tensor, y_memory_tensor, memory_index
         )
         memory_sampler = None
-        if torch.distributed.is_initialized():
+        if self.args.distributed:
             memory_sampler = torch.utils.data.DistributedSampler(
                 memory_dataset_obj, shuffle=False
             )
@@ -475,7 +475,7 @@ def set_aug_diff(args):
     # memory loader is clean train set without shuffle, replaced later in the PoisonAgent step
     memory_sampler = None
     try:
-        if torch.distributed.is_initialized():
+        if self.args.distributed:
             memory_sampler = torch.utils.data.DistributedSampler(
                 memory_dataset, shuffle=False
             )
