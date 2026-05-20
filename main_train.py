@@ -487,15 +487,19 @@ def main(args):
         model.load_state_dict(pretrained_state_dict["state_dict"], strict=True)
     model = model.to(device)
 
-    # Wrap model with DDP if distributed (do not enable find_unused_parameters)
+    # Wrap model with DDP if distributed. Enable unused-parameter detection
+    # only for methods that have momentum encoders (MoCo, BYOL).
     if args.distributed:
+        find_unused = args.method in ("mocov2")
         if args.gpu is None:
             model.cuda()
-            model = torch.nn.parallel.DistributedDataParallel(model)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, find_unused_parameters=find_unused
+            )
         else:
             model.cuda(args.gpu)
             model = torch.nn.parallel.DistributedDataParallel(
-                model, device_ids=[args.gpu]
+                model, device_ids=[args.gpu], find_unused_parameters=find_unused
             )
 
     """
