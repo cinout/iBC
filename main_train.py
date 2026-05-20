@@ -491,11 +491,13 @@ def main(args):
     if args.distributed:
         if args.gpu is None:
             model.cuda()
-            model = torch.nn.parallel.DistributedDataParallel(model)
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, find_unused_parameters=True
+            )
         else:
             model.cuda(args.gpu)
             model = torch.nn.parallel.DistributedDataParallel(
-                model, device_ids=[args.gpu]
+                model, device_ids=[args.gpu], find_unused_parameters=True
             )
 
     """
