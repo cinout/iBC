@@ -549,9 +549,16 @@ def main(args):
 
     # Optimize only parameters that require gradients (exclude momentum encoder)
     trainable_params = [p for p in model.parameters() if p.requires_grad]
-    optimizer = optim.SGD(
-        trainable_params, lr=args.lr, momentum=0.9, weight_decay=args.wd
-    )
+
+    # Use AdamW for ViT backbones with a small default LR and warmup-friendly settings.
+    # Keep SGD for CNN backbones (resnet).
+    if args.arch.lower().startswith("vit"):
+        args.lr = 3e-4
+        optimizer = optim.AdamW(trainable_params, lr=args.lr, weight_decay=0.05)
+    else:
+        optimizer = optim.SGD(
+            trainable_params, lr=args.lr, momentum=0.9, weight_decay=args.wd
+        )
 
     # SSL attack and KNN Evaluation [Poisoned Model]
     trainer.train_freq(model, optimizer, train_transform, poison)
