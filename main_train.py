@@ -430,6 +430,35 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def main(args):
+    # Populate torch.distributed expected env vars from SLURM when necessary
+    # This allows launching with `srun python -u main_train.py ...`.
+    if "SLURM_PROCID" in os.environ and "RANK" not in os.environ:
+        os.environ["RANK"] = os.environ["SLURM_PROCID"]
+    if "SLURM_LOCALID" in os.environ and "LOCAL_RANK" not in os.environ:
+        os.environ["LOCAL_RANK"] = os.environ["SLURM_LOCALID"]
+    if "SLURM_NTASKS" in os.environ and "WORLD_SIZE" not in os.environ:
+        os.environ["WORLD_SIZE"] = os.environ["SLURM_NTASKS"]
+
+    # Derive MASTER_ADDR from SLURM_JOB_NODELIST if not provided
+    if "MASTER_ADDR" not in os.environ and "SLURM_JOB_NODELIST" in os.environ:
+        try:
+            import subprocess
+
+            master_addr = (
+                subprocess.check_output(
+                    ["scontrol", "show", "hostnames", os.environ["SLURM_JOB_NODELIST"]]
+                )
+                .decode()
+                .split()[0]
+            )
+            os.environ["MASTER_ADDR"] = master_addr
+        except Exception:
+            pass
+
+    # Ensure MASTER_PORT has a default if not set
+    if "MASTER_PORT" not in os.environ:
+        os.environ["MASTER_PORT"] = os.environ.get("MASTER_PORT", "12355")
+
     # Initialize distributed process group if launched under srun/torchrun
     world_size_env = int(os.environ.get("WORLD_SIZE", "1"))
     is_distributed_env = world_size_env > 1
