@@ -41,7 +41,7 @@ srun python -u main_train.py \
     --trigger_type htba \
     --arch vit_b_16 \
     --pretrain_batch_size 32 \
-    --lr 3e-1 \
+    --lr 3e-4 \
    --pretrain_epochs 60 \
     \
     --magnitude_train 50.0 \
