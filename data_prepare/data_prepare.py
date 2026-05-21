@@ -347,7 +347,6 @@ class PoisonAgent:
             batch_size=self.args.linear_probe_batch_size,
             sampler=memory_sampler,
             shuffle=(memory_sampler is None),
-            # TODO: drop_last for memory_loader? since kNN needs all images, maybe not drop_last to keep all data
         )
 
         # create 1% train probe (reference) set

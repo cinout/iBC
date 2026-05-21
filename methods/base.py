@@ -1117,7 +1117,7 @@ class CLTrainer:
                     },
                     filename=os.path.join(self.args.saved_path, "encoder.pth.tar"),
                 )
-            # TODO:
+
             if dist.is_initialized():
                 dist.barrier()
 

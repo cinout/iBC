@@ -562,7 +562,6 @@ def main(args):
     # SSL attack and KNN Evaluation [Poisoned Model]
     trainer.train_freq(model, optimizer, train_transform, poison)
 
-    # TODO:
     # synchronize and run only rank 0 for downstream evaluation and baselines
     if dist.is_initialized():
         dist.barrier()
