@@ -41,7 +41,7 @@ srun python -u main_train.py \
     --trigger_type ftrojan \
     --arch vit_b_16 \
     --pretrain_batch_size 32 \
-    --lr 0.5 \
+    --lr 3e-1 \
    --pretrain_epochs 60 \
     \
     --magnitude_train 50.0 \
