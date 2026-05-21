@@ -553,7 +553,6 @@ def main(args):
     # Use AdamW for ViT backbones with a small default LR and warmup-friendly settings.
     # Keep SGD for CNN backbones (resnet).
     if args.arch.lower().startswith("vit"):
-        args.lr = 3e-4
         optimizer = optim.AdamW(trainable_params, lr=args.lr, weight_decay=0.05)
     else:
         optimizer = optim.SGD(

@@ -40,7 +40,8 @@ srun python -u main_train.py \
     --method simclr \
     --trigger_type htba \
     --arch vit_b_16 \
-   --pretrain_batch_size 32 \
+    --pretrain_batch_size 32 \
+    --lr 0.5 \
    --pretrain_epochs 60 \
     \
     --magnitude_train 50.0 \
