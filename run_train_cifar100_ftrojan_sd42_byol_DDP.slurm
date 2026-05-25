@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="c100_f"
 #SBATCH --account=punim1623
-#SBATCH --time=2-00:00:00
+#SBATCH --time=8-00:00:00
 
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=2
@@ -45,7 +45,7 @@ srun python -u main_train.py \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
-    --dataset cifar100 \
+    --dataset imagenet100 \
     --target_class 0 \
     \
     #--pretrained_ssl_model "./Experiments/cifar100_ftrojan_byol_ref_set_sd42/last.pth.tar" \

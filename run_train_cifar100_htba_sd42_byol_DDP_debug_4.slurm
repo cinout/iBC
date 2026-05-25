@@ -46,7 +46,7 @@ srun python -u main_train.py \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
-    --dataset cifar100 \
+    --dataset imagenet100 \
     --target_class 0 \
     \
     #--pretrained_ssl_model "./Experiments/cifar100_ftrojan_byol_ref_set_sd42/last.pth.tar" \
