@@ -21,7 +21,7 @@
 ###### "ntasks-per-node" should have same value as "res=gpu:"
 
 #SBATCH --cpus-per-task=1
-#SBATCH --mem=1000G
+#SBATCH --mem-per-cpu=120G    # alternative
 
 export WORLD_SIZE=8   ####TODO: update world size: nodes x ntasks-per-node
 export MASTER_PORT=12340
