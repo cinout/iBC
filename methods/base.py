@@ -220,7 +220,11 @@ def get_feats(loader, model, normalize_transform, args=None):
             images = content[0]
             images = images.to(device)
             # If using ViT backbone and images are small (e.g., CIFAR 32), upsample to expected size
-            if args is not None and hasattr(args, "arch") and "vit" in args.arch.lower():
+            if (
+                args is not None
+                and hasattr(args, "arch")
+                and "vit" in args.arch.lower()
+            ):
                 expected_size = args.image_size
                 _, _, h, w = images.shape
                 if h != expected_size or w != expected_size:
@@ -1068,7 +1072,7 @@ class CLTrainer:
 
             # EVAL
             if epoch + 1 == self.args.pretrain_epochs or (
-                (training_required) and epoch % self.args.knn_eval_freq == 0
+                (training_required) and (epoch + 1) % self.args.knn_eval_freq == 0
             ):
                 model.eval()
                 backbone = extract_backbone(self.args.method, model)

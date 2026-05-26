@@ -42,6 +42,8 @@ srun python -u main_train.py \
     --arch vit_b_16 \
     --pretrain_batch_size 32 \
     --lr 3e-4 \
+    --knn_eval_freq 40 \
+    --model_save_freq 40 \
    --pretrain_epochs 60 \
     \
     --magnitude_train 50.0 \
