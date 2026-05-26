@@ -44,6 +44,7 @@ srun python -u main_train.py \
     --lr 3e-4 \
     --knn_eval_freq 40 \
     --model_save_freq 40 \
+    --pretrain_epochs 400 \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
