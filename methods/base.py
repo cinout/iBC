@@ -210,7 +210,7 @@ Get representations from encoder
 """
 
 
-def get_feats(loader, model, normalize_transform):
+def get_feats(loader, model, normalize_transform, args=None):
 
     model.eval()
     feats, ptr = None, 0
@@ -219,6 +219,18 @@ def get_feats(loader, model, normalize_transform):
         for i, content in enumerate(loader):
             images = content[0]
             images = images.to(device)
+            # If using ViT backbone and images are small (e.g., CIFAR 32), upsample to expected size
+            if args is not None and hasattr(args, "arch") and "vit" in args.arch.lower():
+                expected_size = args.image_size
+                _, _, h, w = images.shape
+                if h != expected_size or w != expected_size:
+                    images = F.interpolate(
+                        images,
+                        size=(expected_size, expected_size),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
+
             images = normalize_transform(images)
 
             output = model(images)
@@ -740,7 +752,7 @@ class CLTrainer:
 
         # initialize linear mode, including normalization module
         train_probe_feats = get_feats(
-            poison.train_probe_loader, backbone, self.normalize_transform
+            poison.train_probe_loader, backbone, self.normalize_transform, self.args
         )  # shape: [N, D]
         train_var, train_mean = torch.var_mean(train_probe_feats, dim=0)
         linear = nn.Sequential(
