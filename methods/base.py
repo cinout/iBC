@@ -980,6 +980,7 @@ class CLTrainer:
         training_required = self.args.pretrained_ssl_model == "" or force_training
 
         for epoch in range(self.args.start_epoch, self.args.pretrain_epochs):
+            print(f"... pretraining encoder, epoch: {epoch}")
             losses = AverageMeter()
             cl_losses = AverageMeter()
 
