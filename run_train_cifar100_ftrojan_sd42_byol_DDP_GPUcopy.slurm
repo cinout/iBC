@@ -1,29 +1,29 @@
 #!/bin/bash
 
-###SBATCH --partition=gpu-a100
+#SBATCH --partition=gpu-a100
 
 ###SBATCH --partition=gpu-a100-short
 
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
 
-#SBATCH --partition=deeplearn
-#SBATCH --qos=gpgpudeeplearn
-#SBATCH --constraint=dlg4|dlg5|dlg6
+###SBATCH --partition=deeplearn
+###SBATCH --qos=gpgpudeeplearn
+###SBATCH --constraint=dlg4|dlg5|dlg6
 
 #SBATCH --job-name="c100_f"
 #SBATCH --account=punim1623
-#SBATCH --time=0-03:50:00
+#SBATCH --time=5-00:00:00
 
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=4
-#SBATCH --gres=gpu:4
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=2
+#SBATCH --gres=gpu:2
 ###### "ntasks-per-node" should have same value as "res=gpu:"
 
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=512G
 
-export WORLD_SIZE=2   ####TODO: update world size: nodes x ntasks-per-node
+export WORLD_SIZE=4   ####TODO: update world size: nodes x ntasks-per-node
 export MASTER_PORT=12340
 
 echo ">>> NODELIST="${SLURM_NODELIST}
@@ -38,14 +38,13 @@ conda activate anogpt
 
 srun python -u main_train.py \
     --method byol \
-    --trigger_type htba \
+    --trigger_type ftrojan \
     --arch vit_b_16 \
     --pretrain_batch_size 32 \
     --lr 3e-4 \
     --knn_eval_freq 40 \
     --model_save_freq 40 \
     --pretrain_epochs 400 \
-   --pretrain_epochs 60 \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
