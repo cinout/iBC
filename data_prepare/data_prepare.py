@@ -488,7 +488,7 @@ def set_aug_diff(args):
         sampler=memory_sampler,
         shuffle=(memory_sampler is None),
         num_workers=args.num_workers,
-        pin_memory=True,
+        pin_memory=False,
     )
 
     return (

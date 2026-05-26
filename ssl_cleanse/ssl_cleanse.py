@@ -132,7 +132,7 @@ def evaluate_trigger_during_inversion(
         batch_size=100,
         shuffle=True,
         num_workers=args.num_workers,
-        pin_memory=True,
+        pin_memory=False,
         drop_last=True,
     )
 
@@ -208,7 +208,7 @@ def trigger_inversion(args, backbone, poison, feat_dim):
             batch_size=100,
             shuffle=True,
             num_workers=args.num_workers,
-            pin_memory=True,
+            pin_memory=False,
             drop_last=True,
         )
 
@@ -484,7 +484,7 @@ def trigger_mitigation(args, backbone, trainset_data):
         batch_size=128,
         shuffle=True,
         num_workers=args.num_workers,
-        pin_memory=True,
+        pin_memory=False,
         drop_last=True,
     )
 

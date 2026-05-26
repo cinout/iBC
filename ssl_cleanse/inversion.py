@@ -62,7 +62,7 @@ def dataloader_cluster(args, rep_target, x_other_sample):
         batch_size=32,
         shuffle=True,
         num_workers=args.num_workers,
-        pin_memory=True,
+        pin_memory=False,
         drop_last=True,
     )
 
