@@ -3,8 +3,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from methods.base import CLModel
 
-
 device = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+class BatchNorm1dNoBias(nn.BatchNorm1d):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.bias.requires_grad = False
 
 
 class SimCLRModel(CLModel):
@@ -22,13 +27,26 @@ class SimCLRModel(CLModel):
                 nn.Linear(self.feat_dim, self.proj_dim),
             )
         elif self.mlp_layers == 3:
-            self.proj_head = nn.Sequential(
-                nn.Linear(self.feat_dim, self.feat_dim),
-                nn.ReLU(inplace=True),
-                nn.Linear(self.feat_dim, self.feat_dim),
-                nn.ReLU(inplace=True),
-                nn.Linear(self.feat_dim, self.proj_dim),
-            )
+            if args.arch.lower().startswith("vit"):
+                # TODO: we use DDP for ViT pretraining
+                self.proj_head = nn.Sequential(
+                    nn.Linear(self.feat_dim, self.feat_dim, bias=False),
+                    nn.BatchNorm1d(self.feat_dim),
+                    nn.ReLU(inplace=True),
+                    nn.Linear(self.feat_dim, self.feat_dim, bias=False),
+                    nn.BatchNorm1d(self.feat_dim),
+                    nn.ReLU(inplace=True),
+                    nn.Linear(self.feat_dim, self.proj_dim, bias=False),
+                    BatchNorm1dNoBias(self.proj_dim),
+                )
+            else:
+                self.proj_head = nn.Sequential(
+                    nn.Linear(self.feat_dim, self.feat_dim),
+                    nn.ReLU(inplace=True),
+                    nn.Linear(self.feat_dim, self.feat_dim),
+                    nn.ReLU(inplace=True),
+                    nn.Linear(self.feat_dim, self.proj_dim),
+                )
 
     @torch.no_grad()
     def moving_average(self):

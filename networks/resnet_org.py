@@ -303,17 +303,18 @@ def vit_b_16_backbone(pretrained: bool = False, progress: bool = True, **kwargs:
     when used as a backbone.
     """
     model = tv_models.vit_b_16(pretrained=pretrained, progress=progress, **kwargs)
-    # Replace classification head so forward() returns feature vectors (C=768)
-    try:
-        model.heads = nn.Identity()
-    except Exception:
-        # older/newer torchvision variants may use different attribute names
-        if hasattr(model, "classifier"):
-            model.classifier = nn.Identity()
 
-    # For some parts of the code (MoCo wrapper) they expect an attribute
-    # named `fc`. Provide an alias for compatibility.
-    model.fc = getattr(model, "heads", getattr(model, "classifier", nn.Identity()))
+    # # Replace classification head so forward() returns feature vectors (C=768)
+    # try:
+    #     model.heads = nn.Identity()
+    # except Exception:
+    #     # older/newer torchvision variants may use different attribute names
+    #     if hasattr(model, "classifier"):
+    #         model.classifier = nn.Identity()
+
+    # # For some parts of the code (MoCo wrapper) they expect an attribute
+    # # named `fc`. Provide an alias for compatibility.
+    # model.fc = getattr(model, "heads", getattr(model, "classifier", nn.Identity()))
 
     return model
 
