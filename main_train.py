@@ -550,10 +550,8 @@ def main(args):
     # Optimize only parameters that require gradients (exclude momentum encoder)
     trainable_params = [p for p in model.parameters() if p.requires_grad]
 
-    # Use AdamW for ViT backbones with a small default LR and warmup-friendly settings.
-    # Keep SGD for CNN backbones (resnet).
     if args.arch.lower().startswith("vit"):
-        optimizer = optim.AdamW(trainable_params, lr=args.lr, weight_decay=0.05)
+        optimizer = optim.AdamW(trainable_params, lr=args.lr, weight_decay=args.wd)
     else:
         optimizer = optim.SGD(
             trainable_params, lr=args.lr, momentum=0.9, weight_decay=args.wd
@@ -753,11 +751,6 @@ if __name__ == "__main__":
                 pass
 
             builtins.print = print_pass
-
-    # If using a ViT backbone, ensure input image size is appropriate
-    if "vit_b_16" == args.arch.lower() and args.image_size < 224:
-        # ViT-B-16 expects larger spatial resolution (commonly 224)
-        args.image_size = 224
 
     args.saved_path = os.path.join(
         f"./{args.log_path}/{args.timestamp}_{args.dataset}_{args.trigger_type}_{args.method}_sd{args.ssl_pretrain_seed}"

@@ -40,16 +40,18 @@ srun python -u main_train.py \
     --method mocov2 \
     --trigger_type htba \
     --arch vit_b_16 \
+    --image_size 224 \
     --pretrain_batch_size 32 \
     --lr 3e-4 \
+    --wd 0.1 \
     --knn_eval_freq 40 \
     --model_save_freq 40 \
     --pretrain_epochs 400 \
     \
-    --magnitude_train 50.0 \
-    --magnitude_val 100.0 \
+    --magnitude_train 300.0 \
+    --magnitude_val 300.0 \
     --dataset imagenet100 \
-    --target_class 0 \
+    --target_class 26 \
     
     \
     #--pretrained_ssl_model "./Experiments/cifar100_htba_mocov2_ref_set_sd42/last.pth.tar" \

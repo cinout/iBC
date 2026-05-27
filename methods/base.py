@@ -219,7 +219,7 @@ def get_feats(loader, model, normalize_transform, args=None):
         for i, content in enumerate(loader):
             images = content[0]
             images = images.to(device)
-            # If using ViT backbone and images are small (e.g., CIFAR 32), upsample to expected size
+
             if (
                 args is not None
                 and hasattr(args, "arch")
@@ -1242,7 +1242,7 @@ class CLTrainer:
             disable=hide_progress,
         ):
             data = data.to(device)
-            # If using ViT backbone and images are small (e.g., CIFAR 32), upsample to expected size
+
             if hasattr(args, "arch") and "vit" in args.arch.lower():
                 expected_size = args.image_size
                 _, _, h, w = data.shape

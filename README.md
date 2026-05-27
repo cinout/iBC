@@ -37,8 +37,8 @@ python -u main_train.py \
     --method byol \
     \
     --trigger_type ftrojan \
-    --magnitude_train 50.0 \
-    --magnitude_val 100.0 \
+    --magnitude_train 300.0 \
+    --magnitude_val 300.0 \
     \
     --dataset cifar100 \
     --target_class 0 \
