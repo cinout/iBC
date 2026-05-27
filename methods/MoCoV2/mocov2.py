@@ -46,10 +46,9 @@ class MoCo(nn.Module):
         )  # has [conv1, bn1, relu, maxpool, layer1-4, avgpool, fc]
         self.encoder_k = base_encoder(num_classes=dim)
 
-        # TODO: remove later
         if mlp:  # hack: brute-force replacement
             dim_mlp = self.encoder_q.fc.weight.shape[1]  # in_feautere=512
-            print(">>> mlp is True, dim_mlp: ", dim_mlp)
+            # TODO: mlp is True, dim_mlp:  768
 
             # resnet18's fc is replaced with a MLP, with two linear layers, 512 -> 512 -> 1000
             self.encoder_q.fc = nn.Sequential(
