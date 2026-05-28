@@ -42,8 +42,8 @@ python -u main_train.py \
     --arch vit_b_16 \
     --image_size 224 \
     --pretrain_batch_size 32 \
-    --lr 3e-4 \
-    --wd 0.1 \
+    --lr 3e-3 \
+    --wd 0.03 \
     --knn_eval_freq 40 \
     --model_save_freq 40 \
     --pretrain_epochs 400 \

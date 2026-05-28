@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="c100_f"
 #SBATCH --account=punim1623
-#SBATCH --time=4-00:00:00
+#SBATCH --time=3-10:00:00
 
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=2
@@ -42,8 +42,8 @@ srun python -u main_train.py \
     --arch vit_b_16 \
     --image_size 224 \
     --pretrain_batch_size 32 \
-    --lr 3e-4 \
-    --wd 0.1 \
+    --lr 3e-3 \
+    --wd 0.03 \
     --knn_eval_freq 40 \
     --model_save_freq 40 \
     --pretrain_epochs 400 \
