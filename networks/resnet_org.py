@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 import torch.nn as nn
-import torchvision.models as tv_models
+import torchvision.models as models
 from typing import Type, Any, Callable, Union, List, Optional
 
 __all__ = ["ResNet", "resnet18", "resnet34", "resnet50", "resnet101"]
@@ -302,21 +302,12 @@ def vit_b_16_backbone(pretrained: bool = False, progress: bool = True, **kwargs:
     similar to torchvision's `vit_b_16` but replace the head with Identity
     when used as a backbone.
     """
-    model = tv_models.vit_b_16(pretrained=pretrained, progress=progress, **kwargs)
-
-    # Replace classification head so forward() returns feature vectors (C=768)
-    try:
-        model.heads = nn.Identity()
-    except Exception:
-        # older/newer torchvision variants may use different attribute names
-        if hasattr(model, "classifier"):
-            model.classifier = nn.Identity()
-
-    # For some parts of the code (MoCo wrapper) they expect an attribute
-    # named `fc`. Provide an alias for compatibility.
-    model.fc = getattr(model, "heads", getattr(model, "classifier", nn.Identity()))
-
-    return model
+    base_encoder = models.__dict__["vit_b_16"]
+    m = base_encoder(
+        num_classes=768, pretrained=pretrained, progress=progress, **kwargs
+    )
+    m.heads = nn.Identity()
+    return m
 
 
 model_dict = {

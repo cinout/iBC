@@ -14,74 +14,18 @@ def set_model(args):
     elif args.method == "mocov2":
         feat_dim = get_feat_dim(args)
 
-        # For Vision Transformer backbones, torchvision returns a model with
-        # a `heads` (not `fc`) attribute. MoCo implementation expects an
-        # encoder constructor that produces a model with an `fc` attribute.
-        # Wrap the torchvision constructor for ViT to alias `fc` -> `heads`.
         base_encoder = models.__dict__[args.arch]
         if "vit_b_16" == args.arch.lower():
 
             def vit_base_encoder(**kwargs):
                 m = base_encoder(**kwargs)
-                # alias `fc` to the classification head for compatibility
-                if hasattr(m, "heads"):
-                    # TODO: m.heads:  Sequential(
-                    #   (head): Linear(in_features=768, out_features=768, bias=True)
-                    # )
-
-                    # torchvision ViT `heads` may be a Sequential(LayerNorm, Linear).
-                    # Find the final Linear module inside and use it as `fc` so
-                    # MoCo can access `.weight` as expected.
-                    heads = m.heads
-                    if isinstance(heads, nn.Sequential):
-                        # TODO: >>> heads is nn.Sequential, heads:  Sequential(
-                        #   (head): Linear(in_features=768, out_features=768, bias=True)
-                        # )
-
-                        # find last Linear in the sequential
-                        linear_layer = None
-                        for mod in reversed(list(heads)):
-                            if isinstance(mod, nn.Linear):
-                                # TODO: >>> find linear layer in heads, mod:  Linear(in_features=768, out_features=768, bias=True)
-                                linear_layer = mod
-                                break
-                        if linear_layer is not None:
-                            # TODO: >>> set m.fc to linear layer in heads:  Linear(in_features=768, out_features=768, bias=True)
-                            m.fc = linear_layer
-                        else:
-                            m.fc = nn.Identity()
-                    elif isinstance(heads, nn.Linear):
-                        m.fc = heads
-                    else:
-                        m.fc = nn.Identity()
-                elif hasattr(m, "classifier"):
-
-                    cls = m.classifier
-                    if isinstance(cls, nn.Linear):
-
-                        m.fc = cls
-                    elif isinstance(cls, nn.Sequential):
-                        linear_layer = None
-                        for mod in reversed(list(cls)):
-                            if isinstance(mod, nn.Linear):
-
-                                linear_layer = mod
-                                break
-                        if linear_layer is not None:
-
-                            m.fc = linear_layer
-                        else:
-
-                            m.fc = nn.Identity()
-                else:
-                    m.fc = nn.Identity()
-                return m
+                m.heads = nn.Identity()
 
             return MoCo(
                 vit_base_encoder,
                 args,
                 dim=feat_dim,
-                K=65536,
+                K=8192 if args.arch.lower() == "vit_b_16" else 65536,
                 m=0.999,
                 contr_tau=0.2,
                 mlp=True,

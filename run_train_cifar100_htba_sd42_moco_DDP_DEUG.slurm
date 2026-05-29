@@ -23,7 +23,7 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=512G
 
-# export WORLD_SIZE=1   ####TODO: update world size: nodes x ntasks-per-node
+# export WORLD_SIZE=1   ####FIXME: update world size: nodes x ntasks-per-node
 # export MASTER_PORT=12340
 
 # echo ">>> NODELIST="${SLURM_NODELIST}
@@ -42,11 +42,12 @@ python -u main_train.py \
     --arch vit_b_16 \
     --image_size 224 \
     --pretrain_batch_size 32 \
-    --lr 3e-3 \
-    --wd 0.03 \
+    --lr 1.5e-4 \
+    --wd 0.1 \
+    --temp 0.1 \
     --knn_eval_freq 40 \
     --model_save_freq 40 \
-    --pretrain_epochs 400 \
+    --warmup_epoch 40 \
     \
     --magnitude_train 300.0 \
     --magnitude_val 300.0 \

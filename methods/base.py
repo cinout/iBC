@@ -419,7 +419,6 @@ class CLTrainer:
 
     def __init__(self, args):
         self.args = args
-        self.args.warmup_epoch = 10
         self.normalize_transform = T.Compose(
             [
                 T.Normalize(args.mean, args.std),
@@ -626,7 +625,10 @@ class CLTrainer:
                 num_classes=feat_dim,
                 norm_layer=MaskBatchNorm2d,
             )
-            unlearned_model.fc = nn.Sequential()
+            if "vit_b_16" == self.args.arch.lower():
+                unlearned_model.heads = nn.Sequential()
+            else:
+                unlearned_model.fc = nn.Sequential()
         else:
             if "cifar" in self.args.dataset:
                 model_fun, _ = model_dict_cifar[self.args.arch]
@@ -1067,6 +1069,10 @@ class CLTrainer:
 
                     optimizer.zero_grad()
                     loss.backward()
+
+                    if self.args.arch.lower().startswith("vit"):
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
                     optimizer.step()
 
                 warmup_scheduler.step()
@@ -1076,7 +1082,7 @@ class CLTrainer:
                 (training_required) and (epoch + 1) % self.args.knn_eval_freq == 0
             ):
                 model.eval()
-                backbone = extract_backbone(self.args.method, model)
+                backbone = extract_backbone(self.args.method, model, self.args.arch)
 
                 clean_acc, back_acc = self.knn_monitor_fre(
                     backbone,
@@ -1145,8 +1151,7 @@ class CLTrainer:
     """
 
     def trigger_channel_removal(self, model, poison, trained_linear):
-
-        backbone = extract_backbone(self.args.method, model)
+        backbone = extract_backbone(self.args.method, model, self.args.arch)
         backbone.eval()
         trained_linear.eval()
 
@@ -1281,6 +1286,7 @@ class CLTrainer:
             data, target, _ = content
 
             data, target = data.to(device), target.to(device)
+            # TODO: make sure images are alraedy resized in dataloader for VIT
             if hasattr(args, "arch") and "vit" in args.arch.lower():
                 expected_size = args.image_size
                 _, _, h, w = data.shape

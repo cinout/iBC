@@ -120,6 +120,7 @@ SSL
 parser.add_argument("--method", default="simclr", choices=["simclr", "byol", "mocov2"])
 parser.add_argument("--temp", default=0.5, type=float)
 parser.add_argument("--lr", default=0.06, type=float)
+parser.add_argument("--warmup_epoch", default=10, type=int)
 parser.add_argument("--wd", default=5e-4, type=float)
 parser.add_argument("--cos", action="store_true", default=True)
 parser.add_argument("--byol-m", default=0.996, type=float)
@@ -551,7 +552,13 @@ def main(args):
     trainable_params = [p for p in model.parameters() if p.requires_grad]
 
     if args.arch.lower().startswith("vit"):
-        optimizer = optim.AdamW(trainable_params, lr=args.lr, weight_decay=args.wd)
+        scaled_lr = args.lr * args.pretrain_batch_size * args.world_size / 256
+        optimizer = optim.AdamW(
+            trainable_params,
+            lr=scaled_lr,
+            weight_decay=args.wd,
+            betas=(0.9, 0.95),
+        )
     else:
         optimizer = optim.SGD(
             trainable_params, lr=args.lr, momentum=0.9, weight_decay=args.wd
@@ -568,7 +575,7 @@ def main(args):
         if not is_main:
             return
 
-    backbone = extract_backbone(args.method, model)
+    backbone = extract_backbone(args.method, model, args.arch)
 
     # Linear Probe and Evaluation [Poisoned Model]
     trained_linear = trainer.linear_probing(backbone, poison)
@@ -611,7 +618,7 @@ def main(args):
     if args.use_ssl_cleanse:
         update_seed(args.ssl_cleanse_seed)
 
-        backbone = extract_backbone(args.method, model)
+        backbone = extract_backbone(args.method, model, args.arch)
 
         trainset_data = trigger_inversion(
             args, backbone, poison, model.feat_dim
@@ -639,7 +646,7 @@ def main(args):
     Baseline 2: Mask Pruning Strategy (Reconstructive neuron pruning for backdoor defense, ICML 2023)
     """
     if args.use_rnp:
-        backbone = extract_backbone(args.method, model)
+        backbone = extract_backbone(args.method, model, args.arch)
         update_seed(args.rnp_seed)
         trainer.mask_prune(backbone, poison, trained_linear)
 
@@ -665,7 +672,10 @@ def main(args):
 
         if args.method == "mocov2":
             student_backbone = student.encoder_q
-            student_backbone.fc = nn.Sequential()
+            if args.arch.lower().startswith("vit"):
+                student_backbone.heads = nn.Sequential()
+            else:
+                student_backbone.fc = nn.Sequential()
         else:
             student_backbone = student.backbone
 
@@ -699,7 +709,10 @@ def main(args):
 
         if args.method == "mocov2":
             student_backbone = student.encoder_q
-            student_backbone.fc = nn.Sequential()
+            if args.arch.lower().startswith("vit"):
+                student_backbone.heads = nn.Sequential()
+            else:
+                student_backbone.fc = nn.Sequential()
         else:
             student_backbone = student.backbone
 

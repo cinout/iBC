@@ -30,6 +30,8 @@ class MoCo(nn.Module):
         super(MoCo, self).__init__()
         self.args = args
         self.feat_dim = dim
+        self.hidden_dim = 2048
+        self.out_dim = 128
         self.K = K
         self.m = m
         self.contr_tau = contr_tau
@@ -47,16 +49,28 @@ class MoCo(nn.Module):
         self.encoder_k = base_encoder(num_classes=dim)
 
         if mlp:  # hack: brute-force replacement
-            dim_mlp = self.encoder_q.fc.weight.shape[1]  # in_feautere=512
-            # TODO: mlp is True, dim_mlp:  768
-
-            # resnet18's fc is replaced with a MLP, with two linear layers, 512 -> 512 -> 1000
-            self.encoder_q.fc = nn.Sequential(
-                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc
-            )
-            self.encoder_k.fc = nn.Sequential(
-                nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc
-            )
+            if self.args.arch.lower().startswith("vit"):
+                self.encoder_q.heads.head = nn.Sequential(
+                    nn.Linear(self.feat_dim, self.hidden_dim),
+                    nn.BatchNorm1d(self.hidden_dim),
+                    nn.ReLU(inplace=True),
+                    nn.Linear(self.hidden_dim, self.out_dim),
+                )
+                self.encoder_k.heads.head = nn.Sequential(
+                    nn.Linear(self.feat_dim, self.hidden_dim),
+                    nn.BatchNorm1d(self.hidden_dim),
+                    nn.ReLU(inplace=True),
+                    nn.Linear(self.hidden_dim, self.out_dim),
+                )
+            else:
+                dim_mlp = self.encoder_q.fc.weight.shape[1]  # in_feautere=512
+                # resnet18's fc is replaced with a MLP, with two linear layers, 512 -> 512 -> 1000
+                self.encoder_q.fc = nn.Sequential(
+                    nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_q.fc
+                )
+                self.encoder_k.fc = nn.Sequential(
+                    nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc
+                )
 
         for param_q, param_k in zip(
             self.encoder_q.parameters(), self.encoder_k.parameters()

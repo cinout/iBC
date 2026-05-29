@@ -19,6 +19,7 @@ class SimCLRModel(CLModel):
         self.args = args
 
         self.proj_dim = 128  # C
+        self.hidden_dim = 2048  # C
 
         if self.mlp_layers == 2:
             self.proj_head = nn.Sequential(
@@ -28,15 +29,15 @@ class SimCLRModel(CLModel):
             )
         elif self.mlp_layers == 3:
             if args.arch.lower().startswith("vit"):
-                # TODO: we use DDP for ViT pretraining
+                # DDP for ViT pretraining, make sure BatchNorm1d layers in the MLP projection head
                 self.proj_head = nn.Sequential(
-                    nn.Linear(self.feat_dim, self.feat_dim, bias=False),
-                    nn.BatchNorm1d(self.feat_dim),
+                    nn.Linear(self.feat_dim, self.hidden_dim, bias=False),
+                    nn.BatchNorm1d(self.hidden_dim),
                     nn.ReLU(inplace=True),
-                    nn.Linear(self.feat_dim, self.feat_dim, bias=False),
-                    nn.BatchNorm1d(self.feat_dim),
+                    nn.Linear(self.hidden_dim, self.hidden_dim, bias=False),
+                    nn.BatchNorm1d(self.hidden_dim),
                     nn.ReLU(inplace=True),
-                    nn.Linear(self.feat_dim, self.proj_dim, bias=False),
+                    nn.Linear(self.hidden_dim, self.proj_dim, bias=False),
                     BatchNorm1dNoBias(self.proj_dim),
                 )
             else:

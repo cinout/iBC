@@ -8,7 +8,7 @@ from networks.resnet_cifar import model_dict as model_dict_cifar
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-def extract_backbone(method, model):
+def extract_backbone(method, model, arch):
     # unwrap DistributedDataParallel if necessary
     if hasattr(model, "module"):
         model_module = model.module
@@ -17,7 +17,10 @@ def extract_backbone(method, model):
 
     if method == "mocov2":
         backbone = copy.deepcopy(model_module.encoder_q)
-        backbone.fc = nn.Sequential()
+        if arch.lower().startswith("vit"):
+            backbone.heads = nn.Sequential()
+        else:
+            backbone.fc = nn.Sequential()
     else:
         backbone = copy.deepcopy(model_module.backbone)
     return backbone
