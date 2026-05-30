@@ -486,7 +486,9 @@ def main(args):
             args.pretrained_ssl_model, map_location=device
         )
         print(f"model:", model)
-        print(f"pretrained_state_dict["state_dict"]:", pretrained_state_dict["state_dict"])
+        print(
+            f"pretrained_state_dict[state_dict]:", pretrained_state_dict["state_dict"]
+        )
         model.load_state_dict(pretrained_state_dict["state_dict"], strict=True)
     model = model.to(device)
 
