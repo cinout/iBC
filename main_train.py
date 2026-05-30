@@ -487,7 +487,8 @@ def main(args):
         )
         print(f"model:", model)
         print(
-            f"pretrained_state_dict[state_dict]:", pretrained_state_dict["state_dict"]
+            f"pretrained_state_dict[state_dict]:",
+            pretrained_state_dict["state_dict"].named_modules(),
         )
         model.load_state_dict(pretrained_state_dict["state_dict"], strict=True)
     model = model.to(device)
