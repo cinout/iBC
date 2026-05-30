@@ -346,7 +346,7 @@ class PoisonAgent:
             memory_dataset_obj,
             batch_size=self.args.linear_probe_batch_size,
             sampler=memory_sampler,
-            shuffle=(memory_sampler is None),
+            shuffle=False,
         )
 
         # create 1% train probe (reference) set
@@ -486,7 +486,7 @@ def set_aug_diff(args):
         memory_dataset,
         512,
         sampler=memory_sampler,
-        shuffle=(memory_sampler is None),
+        shuffle=False,
         num_workers=args.num_workers,
         pin_memory=False,
     )
