@@ -13,55 +13,45 @@
 
 #SBATCH --job-name="c100_h"
 #SBATCH --account=punim1623
-#SBATCH --time=0-04:00:00
+#SBATCH --time=0-00:04:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
-###### "ntasks-per-node" should have same value as "res=gpu:"
+### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --cpus-per-task=1
-#SBATCH --mem=250G
+#SBATCH --mem=80G
 
-# export WORLD_SIZE=4   ####FIXME: update world size: nodes x ntasks-per-node
-# export MASTER_PORT=12340
-
+# export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
+# export MASTER_PORT=28400
 # echo ">>> NODELIST="${SLURM_NODELIST}
 # master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 # export MASTER_ADDR=$master_addr
 # echo ">>> MASTER_ADDR="$MASTER_ADDR
+
+
 
 module purge
 
 eval "$(conda shell.bash hook)"
 conda activate anogpt
 
-srun python -u main_train.py \
+python -u main_train.py \
     --method simclr \
     --trigger_type htba \
-    --arch vit_b_16 \
-    --image_size 224 \
-    --pretrain_batch_size 32 \
-    --lr 1.5e-4 \
-    --wd 0.1 \
-    --temp 0.1 \
-    --knn_eval_freq 40 \
-    --model_save_freq 40 \
-    --warmup_epoch 40 \
-    --removed_channel_num 105 \
-    --voted_channel_num 45 \
+    \
+    --magnitude_train 50.0 \
+    --magnitude_val 100.0 \
+    --dataset cifar100 \
+    --target_class 0 \
+    \
     \
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    --magnitude_train 300.0 \
-    --magnitude_val 300.0 \
-    --dataset imagenet100 \
-    --target_class 26 \
-    \
-    --pretrained_ssl_model "./Experiments/vit_set1_imagenet100_htba_simclr_sd42/encoder.pth.tar" \
-    --pretrained_linear_model "./Experiments/vit_set1_imagenet100_htba_simclr_sd42/linear.pth.tar" \
+    --pretrained_ssl_model "./Experiments/ada_entro_0.5_correct_cifar100_htba_simclr_sd42/encoder.pth.tar" \
+    --pretrained_linear_model "./Experiments/ada_entro_0.5_correct_cifar100_htba_simclr_sd42/linear.pth.tar" \
 
 
 ##Log this job's resource usage stats###
