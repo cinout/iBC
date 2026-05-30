@@ -71,7 +71,12 @@ class SimCLRModel(CLModel):
 
         features = torch.cat([f1.unsqueeze(1), f2.unsqueeze(1)], dim=1)
 
-        return features  # [bs, 2, C]
+        if self.args.use_adaptive_attack:
+            x1, x2 = torch.split(x, [bsz, bsz], dim=0)  # each [bs, C]
+            backbone_features = torch.cat([x1.unsqueeze(1), x2.unsqueeze(1)], dim=1)
+            return backbone_features, features  # [bs, 2, C], [bs, 2, C]
+        else:
+            return features  # [bs, 2, C]
 
     """
     Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.

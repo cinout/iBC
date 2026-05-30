@@ -7,7 +7,10 @@ from pyparsing import Dict, Optional
 
 # FIXME: update
 file_names = [
-    "results_ada_entro_2",
+    "results_ada_l2spread_lambda_0.2",
+    "results_ada_l2spread_lambda_0.5",
+    "results_ada_l2spread_lambda_1",
+    "results_ada_l2spread_lambda_2",
 ]
 
 for file_name in file_names:
@@ -16,7 +19,8 @@ for file_name in file_names:
     with open(input_file, "r", encoding="utf-8") as jf:
         table = json.load(jf)  # type: Dict[str, Dict[str, Optional[object]]]
 
-    output_file_acc_asr = f"results/{file_name}.txt"
+    output_file_acc_asr = f"results/{file_name}_uncleansed.txt"
+    # output_file_acc_asr = f"results/{file_name}.txt"
     output_acc_asr_file_handle = open(output_file_acc_asr, "w", encoding="utf-8")
 
     classifiers = ["knn", "linear"]
@@ -33,23 +37,22 @@ for file_name in file_names:
             for dataset in datasets:
                 for metric in metrics:
 
-                    ## backdoored (uncleansed) data
-                    # if classifier == "knn":
-                    #     if metric == "clean_acc":
-                    #         result_key = "clean_acc_800"
-                    #     elif metric == "back_asr":
-                    #         result_key = "back_acc_800"
-                    # elif classifier == "linear":
-                    #     if metric == "clean_acc":
-                    #         result_key = "linear_ACC"
-                    #     elif metric == "back_asr":
-                    #         result_key = "linear_ASR"
+                    # backdoored (uncleansed) data
+                    if classifier == "knn":
+                        if metric == "clean_acc":
+                            result_key = "clean_acc_800"
+                        elif metric == "back_asr":
+                            result_key = "back_acc_800"
+                    elif classifier == "linear":
+                        if metric == "clean_acc":
+                            result_key = "linear_ACC"
+                        elif metric == "back_asr":
+                            result_key = "linear_ASR"
 
                     ## cleansed data
-                    result_key = f"{classifier}_{metric}"
+                    # result_key = f"{classifier}_{metric}"
 
                     for trigger in triggers:
-
                         # find the corresponding entry in the table
                         entity = next(
                             (
@@ -83,7 +86,9 @@ for file_name in file_names:
                         #     std_val, (int, float)
                         # ):
 
-                        output_acc_asr_file_handle.write(f"{entity_result}\t")
+                        output_acc_asr_file_handle.write(
+                            f"{entity_result if entity_result is not None else 'N/A'}\t"
+                        )
 
             # Newline after each method
             output_acc_asr_file_handle.write("\n")

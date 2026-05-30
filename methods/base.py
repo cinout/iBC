@@ -1005,7 +1005,10 @@ class CLTrainer:
                     v1 = train_transform(images)
                     v2 = train_transform(images)
 
-                    features = model(v1, v2)
+                    if self.args.use_adaptive_attack:
+                        backbone_features, features = model(v1, v2)
+                    else:
+                        features = model(v1, v2)
 
                     if hasattr(model, "module"):
                         model_module = model.module
@@ -1022,19 +1025,21 @@ class CLTrainer:
                     # Add adaptive loss term for bypassing iBC defense
                     adaptive_loss = None
                     if self.args.use_adaptive_attack:
-                        # Extract base features for adaptive loss computation
-                        # For different SSL methods, features structure differs
+                        # Extract backbone_features for adaptive loss computation
+                        # For different SSL methods, backbone_features structure differs
                         if self.args.method == "simclr":
-                            # features shape: [bs, 2, C]; extract both views
-                            f1 = features[:, 0, :]
-                            f2 = features[:, 1, :]
+                            # backbone_features shape: [bs, 2, C]; extract both views
+                            f1 = backbone_features[:, 0, :]
+                            f2 = backbone_features[:, 1, :]
                             feat_for_loss = torch.cat([f1, f2], dim=0)
                         elif self.args.method == "byol":
-                            # features is tuple of (online_proj, target_proj, online_pred, target_pred)
-                            feat_for_loss = torch.cat([features[0], features[1]], dim=0)
+                            # backbone_features is tuple of (feat_q1, feat_q2, feat_k1, feat_k2)
+                            feat_for_loss = torch.cat(
+                                [backbone_features[0], backbone_features[1]], dim=0
+                            )
                         elif self.args.method == "mocov2":
-                            # features is tuple (q, k) of query and key embeddings
-                            feat_for_loss = torch.cat([features[0], features[1]], dim=0)
+                            # backbone_features is query embeddings
+                            feat_for_loss = backbone_features
 
                         adaptive_loss = self.compute_adaptive_loss(
                             feat_for_loss,

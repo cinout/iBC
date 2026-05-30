@@ -74,13 +74,28 @@ class BYOL(CLModel):
         with torch.no_grad():  # no gradient to keys
             self._momentum_update_key_encoder()  # update the key encoder
 
-        p1 = self.predictor(self.encoder_q(x1))  # NxC
-        z2 = self.encoder_k(x2)  # NxC
+        # Explicitly get backbone outputs, then projector, so backbone features
+        # are available without re-running the backbone separately.
+        feat_q1 = self.backbone(x1)
+        proj_q1 = self.projector_q(feat_q1)
+        p1 = self.predictor(proj_q1)  # NxC
 
-        p2 = self.predictor(self.encoder_q(x2))  # NxC
-        z1 = self.encoder_k(x1)  # NxC
+        feat_q2 = self.backbone(x2)
+        proj_q2 = self.projector_q(feat_q2)
+        p2 = self.predictor(proj_q2)  # NxC
 
-        return p1, p2, z1, z2
+        # target encoder (momentum) outputs (compute backbone_k then projector_k)
+        feat_k2 = self.backbone_k(x2)
+        z2 = self.projector_k(feat_k2)
+
+        feat_k1 = self.backbone_k(x1)
+        z1 = self.projector_k(feat_k1)
+
+        if self.args.use_adaptive_loss:
+            return (feat_q1, feat_q2, feat_k1, feat_k2), (p1, p2, z1, z2)
+        else:
+
+            return p1, p2, z1, z2
 
     def negcos(self, p1, p2, z1, z2, mean=True):
 

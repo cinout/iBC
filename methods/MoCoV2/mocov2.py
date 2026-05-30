@@ -201,7 +201,28 @@ class MoCo(nn.Module):
         """
 
         # compute query features
+        hq = None
+        if self.args.use_adaptive_loss:
+            # Capture features right before the final fc/heads using a forward hook
+            self.feat_q_pre_fc = None
+            hook_target_q = None
+            if hasattr(self.encoder_q, "fc"):
+                hook_target_q = self.encoder_q.fc
+            elif hasattr(self.encoder_q, "heads"):
+                hook_target_q = self.encoder_q.heads
+
+            if hook_target_q is not None:
+
+                def _save_q(module, inp, out):
+                    # inp[0] is the input tensor to the final layer
+                    self.feat_q_pre_fc = inp[0]
+
+                hq = hook_target_q.register_forward_hook(_save_q)
+
         q = self.encoder_q(im_q)  # queries: NxC
+        if hq is not None:
+            backbone_feature_q = self.feat_q_pre_fc
+            hq.remove()
         q = F.normalize(q, dim=1)
 
         # compute key features
@@ -217,8 +238,12 @@ class MoCo(nn.Module):
             # undo shuffle
             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
-        # both are flattened, normalized projector (.fc) output
-        return q, k
+        if self.args.use_adaptive_loss:
+            # both are flattened, normalized projector (.fc) output
+            return backbone_feature_q, (q, k)
+        else:
+            # both are flattened, normalized projector (.fc) output
+            return q, k
 
 
 # utils
