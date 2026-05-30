@@ -13,14 +13,14 @@
 
 #SBATCH --job-name="c100_h"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:04:00
+#SBATCH --time=0-02:04:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --gres=gpu:1
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=80G
+#SBATCH --mem=180G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
@@ -37,17 +37,25 @@ eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 python -u main_train.py \
-    --method byol \
-    --trigger_type htba \
+    --method mocov2 \
+    --trigger_type ftrojan \
+    --arch vit_b_16 \
+    --image_size 224 \
+    --pretrain_batch_size 32 \
+    --lr 1.5e-4 \
+    --wd 0.1 \
+    --temp 0.1 \
+    --knn_eval_freq 40 \
+    --model_save_freq 40 \
+    --warmup_epoch 40 \
     \
-    --magnitude_train 50.0 \
-    --magnitude_val 100.0 \
-    --dataset cifar100 \
-    --target_class 0 \
+    --magnitude_train 300.0 \
+    --magnitude_val 300.0 \
+    --dataset imagenet100 \
+    --target_class 26 \
     \
-    \
-    --pretrained_ssl_model "./Experiments/cifar100_htba_byol_ref_set_sd42/last.pth.tar" \
-    --pretrained_linear_model "./Experiments/cifar100_htba_byol_ref_set_sd42/linear.pth.tar" \
+    --pretrained_ssl_model "./Experiments/20260527_144716_32_60_imagenet100_ftrojan_mocov2_sd42/encoder_epoch_360.pth.tar" \
+    # --pretrained_linear_model "./Experiments/cifar100_htba_byol_ref_set_sd42/linear.pth.tar" \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
