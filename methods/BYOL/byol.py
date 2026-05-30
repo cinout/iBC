@@ -91,7 +91,7 @@ class BYOL(CLModel):
         feat_k1 = self.backbone_k(x1)
         z1 = self.projector_k(feat_k1)
 
-        if self.args.use_adaptive_loss:
+        if self.args.use_adaptive_attack:
             return (feat_q1, feat_q2, feat_k1, feat_k2), (p1, p2, z1, z2)
         else:
 

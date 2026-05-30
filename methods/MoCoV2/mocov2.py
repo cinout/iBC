@@ -210,7 +210,7 @@ class MoCo(nn.Module):
 
         # compute query features
         hq = None
-        if self.args.use_adaptive_loss:
+        if self.args.use_adaptive_attack:
             # Capture features right before the final fc/heads using a forward hook
             self.feat_q_pre_fc = None
             hook_target_q = None
@@ -246,7 +246,7 @@ class MoCo(nn.Module):
             # undo shuffle
             k = self._batch_unshuffle_ddp(k, idx_unshuffle)
 
-        if self.args.use_adaptive_loss:
+        if self.args.use_adaptive_attack:
             # both are flattened, normalized projector (.fc) output
             return backbone_feature_q, (q, k)
         else:
