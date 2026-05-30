@@ -505,6 +505,8 @@ def main(args):
                 keys_to_remove = [
                     k for k in list(state_dict.keys()) if k.startswith("proj_head")
                 ]  # remove the projection head
+            if args.method == "byol":
+                keys_to_remove = []
             for k in keys_to_remove:
                 state_dict.pop(k, None)
             if len(keys_to_remove) > 0:
