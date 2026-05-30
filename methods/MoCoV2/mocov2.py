@@ -72,14 +72,22 @@ class MoCo(nn.Module):
                     nn.Linear(dim_mlp, dim_mlp), nn.ReLU(), self.encoder_k.fc
                 )
 
+        # determine actual embedding dimension produced by the encoders
+        # For ViT with an added MLP head we produce `self.out_dim` (128).
+        # For other backbones the final output dimension remains `dim`.
+        if mlp and self.args.arch.lower().startswith("vit"):
+            self.embed_dim = self.out_dim
+        else:
+            self.embed_dim = dim
+
         for param_q, param_k in zip(
             self.encoder_q.parameters(), self.encoder_k.parameters()
         ):
             param_k.data.copy_(param_q.data)  # initialize
             param_k.requires_grad = False  # not update by gradient
 
-        # create the queue
-        self.register_buffer("queue", torch.randn(dim, K))
+        # create the queue (use embedding dimension, not backbone feature dim)
+        self.register_buffer("queue", torch.randn(self.embed_dim, K))
         self.queue = F.normalize(self.queue, dim=0)
         self.register_buffer("queue_ptr", torch.zeros(1, dtype=torch.long))
 
