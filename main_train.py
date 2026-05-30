@@ -487,12 +487,15 @@ def main(args):
         )
         state_dict = pretrained_state_dict["state_dict"]
 
-        print(f"model:", model)
-        print(
-            f"pretrained_state_dict module names:",
-            state_dict.keys(),
-        )
-        model.load_state_dict(state_dict, strict=True)
+        # print(f"model:", model)
+        # print(
+        #     f"pretrained_state_dict module names:",
+        #     state_dict.keys(),
+        # )
+        if args.use_adaptive_attack:
+            model.load_state_dict(state_dict, strict=False)
+        else:
+            model.load_state_dict(state_dict, strict=True)
     model = model.to(device)
 
     # Wrap model with DDP if distributed. Enable unused-parameter detection
