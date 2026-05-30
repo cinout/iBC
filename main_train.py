@@ -492,7 +492,7 @@ def main(args):
         #     f"pretrained_state_dict module names:",
         #     state_dict.keys(),
         # )
-        if args.use_adaptive_attack:
+        if args.arch.lower().startswith("vit"):
             model.load_state_dict(state_dict, strict=False)
         else:
             model.load_state_dict(state_dict, strict=True)
