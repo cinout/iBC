@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="c100_f"
 #SBATCH --account=punim1623
-#SBATCH --time=0-10:00:00
+#SBATCH --time=0-06:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -42,6 +42,10 @@ python -u main_train.py \
     --dataset cifar100 \
     --target_class 0 \
     \
+    --use_adaptive_attack \
+    --adaptive_attack_lambda 0.2 \
+    --adaptive_attack_mode l2_spread \
+\
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
