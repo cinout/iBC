@@ -20,6 +20,7 @@ def set_model(args):
             def vit_base_encoder(**kwargs):
                 m = base_encoder(**kwargs)
                 m.heads = nn.Identity()
+                return m
 
             return MoCo(
                 vit_base_encoder,
