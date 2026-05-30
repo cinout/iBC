@@ -572,7 +572,11 @@ def main(args):
     trainable_params = [p for p in model.parameters() if p.requires_grad]
 
     if args.arch.lower().startswith("vit"):
-        scaled_lr = args.lr * args.pretrain_batch_size * args.world_size / 256
+        scaled_lr = (
+            args.lr * args.pretrain_batch_size * args.world_size / 256
+            if args.world_size > 0
+            else args.lr
+        )
         optimizer = optim.AdamW(
             trainable_params,
             lr=scaled_lr,
