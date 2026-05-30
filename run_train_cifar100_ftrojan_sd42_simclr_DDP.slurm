@@ -49,13 +49,16 @@ srun python -u main_train.py \
     --model_save_freq 40 \
     --warmup_epoch 40 \
     \
+    --use_ibc \
+    --find_channels_from_n_poison_samples 4 \
+    --find_channels_from_n_clean_samples 0 \
+    \
     --magnitude_train 300.0 \
     --magnitude_val 300.0 \
     --dataset imagenet100 \
     --target_class 26 \
-    
     \
-    #--pretrained_ssl_model "./Experiments/cifar100_ftrojan_simclr_ref_set_sd42/last.pth.tar" \
+    --pretrained_ssl_model "./Experiments/vit_set1_imagenet100_ftrojan_simclr_sd42/encoder.pth.tar" \
     #--pretrained_linear_model "./Experiments/cifar100_ftrojan_simclr_ref_set_sd42/linear.pth.tar" \
 
 
