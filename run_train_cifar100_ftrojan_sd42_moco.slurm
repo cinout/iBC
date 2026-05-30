@@ -42,10 +42,6 @@ python -u main_train.py \
     --dataset cifar100 \
     --target_class 0 \
     \
-    --use_adaptive_attack \
-    --adaptive_attack_lambda 2 \
-    --adaptive_attack_mode entropy \
-\
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \

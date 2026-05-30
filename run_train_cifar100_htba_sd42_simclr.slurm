@@ -37,7 +37,7 @@ eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 python -u main_train.py \
-    --method byol \
+    --method simclr \
     --trigger_type htba \
     \
     --magnitude_train 50.0 \
@@ -45,16 +45,13 @@ python -u main_train.py \
     --dataset cifar100 \
     --target_class 0 \
     \
-    --use_adaptive_attack \
-    --adaptive_attack_lambda 2 \
-    --adaptive_attack_mode entropy \
-\
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    #--pretrained_ssl_model "./Experiments/cifar100_htba_byol_ref_set_sd42/last.pth.tar" \
-    #--pretrained_linear_model "./Experiments/cifar100_htba_byol_ref_set_sd42/linear.pth.tar" \
+    #--pretrained_ssl_model "./Experiments/cifar100_htba_simclr_ref_set_sd42/last.pth.tar" \
+    #--pretrained_linear_model "./Experiments/cifar100_htba_simclr_ref_set_sd42/linear.pth.tar" \
+
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
