@@ -50,13 +50,13 @@ class MoCo(nn.Module):
 
         if mlp:  # hack: brute-force replacement
             if self.args.arch.lower().startswith("vit"):
-                self.encoder_q.heads.head = nn.Sequential(
+                self.encoder_q.heads = nn.Sequential(
                     nn.Linear(self.feat_dim, self.hidden_dim),
                     nn.BatchNorm1d(self.hidden_dim),
                     nn.ReLU(inplace=True),
                     nn.Linear(self.hidden_dim, self.out_dim),
                 )
-                self.encoder_k.heads.head = nn.Sequential(
+                self.encoder_k.heads = nn.Sequential(
                     nn.Linear(self.feat_dim, self.hidden_dim),
                     nn.BatchNorm1d(self.hidden_dim),
                     nn.ReLU(inplace=True),
