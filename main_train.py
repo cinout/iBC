@@ -485,12 +485,14 @@ def main(args):
         pretrained_state_dict = torch.load(
             args.pretrained_ssl_model, map_location=device
         )
+        state_dict = pretrained_state_dict["state_dict"]
+
         print(f"model:", model)
         print(
-            f"pretrained_state_dict[state_dict]:",
-            pretrained_state_dict["state_dict"].named_modules(),
+            f"pretrained_state_dict module names:",
+            state_dict.keys(),
         )
-        model.load_state_dict(pretrained_state_dict["state_dict"], strict=True)
+        model.load_state_dict(state_dict, strict=True)
     model = model.to(device)
 
     # Wrap model with DDP if distributed. Enable unused-parameter detection
