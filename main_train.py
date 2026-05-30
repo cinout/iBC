@@ -493,6 +493,16 @@ def main(args):
         #     state_dict.keys(),
         # )
         if args.arch.lower().startswith("vit"):
+            # Remove MoCo-style queue buffers if present in the checkpoint
+            # (keys like 'queue' or 'queue_ptr'), as ViT models here don't use them.
+            keys_to_remove = [
+                k for k in list(state_dict.keys()) if "queue" in k or "queue_ptr" in k
+            ]
+            for k in keys_to_remove:
+                state_dict.pop(k, None)
+            if len(keys_to_remove) > 0:
+                print(f"Removed checkpoint keys: {keys_to_remove}")
+
             model.load_state_dict(state_dict, strict=False)
         else:
             model.load_state_dict(state_dict, strict=True)
