@@ -495,9 +495,16 @@ def main(args):
         if args.arch.lower().startswith("vit"):
             # Remove MoCo-style queue buffers if present in the checkpoint
             # (keys like 'queue' or 'queue_ptr'), as ViT models here don't use them.
-            keys_to_remove = [
-                k for k in list(state_dict.keys()) if "queue" in k or "queue_ptr" in k
-            ]
+            if args.method == "mocov2":
+                keys_to_remove = [
+                    k
+                    for k in list(state_dict.keys())
+                    if "queue" in k or "queue_ptr" in k
+                ]
+            if args.method == "simclr":
+                keys_to_remove = [
+                    k for k in list(state_dict.keys()) if k.startswith("proj_head")
+                ]  # remove the projection head
             for k in keys_to_remove:
                 state_dict.pop(k, None)
             if len(keys_to_remove) > 0:
