@@ -1,8 +1,8 @@
 #!/bin/bash
 
-###SBATCH --partition=gpu-a100
+#SBATCH --partition=gpu-a100
 
-#SBATCH --partition=gpu-a100-short
+###SBATCH --partition=gpu-a100-short
 
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
@@ -20,7 +20,7 @@
 #SBATCH --gres=gpu:1
 ### "ntasks-per-node" should have same value as "res=gpu:"
 
-#SBATCH --mem=120G
+#SBATCH --mem=250G
 
 # export WORLD_SIZE=2   ### update world size: nodes x ntasks-per-node
 # export MASTER_PORT=28400
