@@ -1244,7 +1244,8 @@ class CLTrainer:
         net.eval()
 
         feature_bank = []
-        # generate feature bank
+        label_bank = []
+        # generate feature bank (and corresponding label bank)
         for data, target, _ in tqdm(
             memory_data_loader,
             desc="Feature extracting",
@@ -1252,6 +1253,7 @@ class CLTrainer:
             disable=hide_progress,
         ):
             data = data.to(device)
+            target = target.to(device)
 
             if hasattr(args, "arch") and "vit" in args.arch.lower():
                 expected_size = args.image_size
@@ -1270,14 +1272,14 @@ class CLTrainer:
 
             feature = F.normalize(feature, dim=1)
             feature_bank.append(feature)
+            # keep labels in the same order as features
+            label_bank.append(target.detach().cpu())
 
         # feature_bank: [dim, total num]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
 
-        # feature_labels: [total num]
-        feature_labels = (
-            memory_data_loader.dataset[:][1].clone().detach().to(feature_bank.device)
-        )
+        # feature_labels: [total num] -- build from the label_bank to ensure alignment
+        feature_labels = torch.cat(label_bank, dim=0).long().to(feature_bank.device)
 
         """
         Evaluate clean KNN
@@ -1387,6 +1389,12 @@ class CLTrainer:
         # feature: [bsz, dim]
         # feature_bank: [dim, clean_val_total_num]
         # feature_labels: [clean_val_total_num]
+
+        # ensure k is not larger than the number of items in the feature bank
+        knn_k = min(knn_k, feature_bank.size(1))
+        # infer classes if not provided or invalid
+        if classes is None or classes <= 0:
+            classes = int(feature_labels.max().item()) + 1
 
         # compute cos similarity between each feature vector and feature bank ---> [B, N]
         sim_matrix = torch.mm(feature, feature_bank)
