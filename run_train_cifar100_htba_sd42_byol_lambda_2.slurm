@@ -11,9 +11,9 @@
 #SBATCH --qos=gpgpudeeplearn
 #SBATCH --constraint=dlg4|dlg5|dlg6
 
-#SBATCH --job-name="c100_f"
+#SBATCH --job-name="c100_h"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:04:00
+#SBATCH --time=0-10:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -29,27 +29,32 @@
 # export MASTER_ADDR=$master_addr
 # echo ">>> MASTER_ADDR="$MASTER_ADDR
 
+
+
 module purge
 
 eval "$(conda shell.bash hook)"
 conda activate anogpt
 
 python -u main_train.py \
-    --method simclr \
+    --method byol \
+    --trigger_type htba \
     \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
     --dataset cifar100 \
     --target_class 0 \
     \
-    \
+    --use_adaptive_attack \
+    --adaptive_attack_lambda 2 \
+    --adaptive_attack_mode adversarial \
+\
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    --pretrained_ssl_model "./Experiments/ada_entro_0.5_correct_cifar100_ftrojan_simclr_sd42/encoder.pth.tar" \
-    --pretrained_linear_model "./Experiments/ada_entro_0.5_correct_cifar100_ftrojan_simclr_sd42/linear.pth.tar" \
-
+    #--pretrained_ssl_model "./Experiments/cifar100_htba_byol_ref_set_sd42/last.pth.tar" \
+    #--pretrained_linear_model "./Experiments/cifar100_htba_byol_ref_set_sd42/linear.pth.tar" \
 
 ##Log this job's resource usage stats###
 my-job-stats -a -n -s
