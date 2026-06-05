@@ -44,7 +44,7 @@ python -u main_train.py \
     \
     --use_adaptive_attack \
     --adaptive_attack_lambda 0.2 \
-    --adaptive_attack_mode adversarial \
+    --adaptive_attack_mode corr_penalty \
     --knn_eval_freq 100 \
 \
     --use_ibc \
