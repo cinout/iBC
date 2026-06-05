@@ -48,6 +48,7 @@ python -u main_train.py \
     --use_adaptive_attack \
     --adaptive_attack_lambda 2 \
     --adaptive_attack_mode adversarial \
+    --knn_eval_freq 100 \
 \
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \

@@ -858,53 +858,124 @@ class CLTrainer:
 
     def compute_adaptive_loss(self, features, mode="entropy", epoch=0):
         if mode == "entropy":
-            # Maximize entropy of feature distribution across channels
-            # This encourages the trigger to activate many channels equally
+            # Maximize entropy of feature distribution across channels.This encourages the trigger to activate many channels equally
+
             # L2 normalize to get probability-like distribution
             feat_norm = F.normalize(features, p=2, dim=1)  # [bs, feat_dim]
-
-            # Compute Shannon entropy for each sample
-            # Higher entropy means more uniform activation across channels
+            # Compute Shannon entropy: -sum(p * log(p)) for each sample. Higher entropy means more uniform activation across channels
             feat_abs = torch.abs(feat_norm)
             feat_probs = feat_abs / (feat_abs.sum(dim=1, keepdim=True) + 1e-8)
-
-            # Shannon entropy: -sum(p * log(p))
             entropy = -torch.sum(feat_probs * torch.log(feat_probs + 1e-8), dim=1)
-
-            # We want to MINIMIZE entropy loss (negative entropy), which means
             # we want to maximize entropy to spread activation
             loss = -entropy.mean()  # Negative because we want to maximize entropy
 
         elif mode == "l2_spread":
-            # Encourage L2 norm to be spread across channels evenly
-            # by minimizing the standard deviation of channel magnitudes
-            feat_norm = F.normalize(features, p=2, dim=0)  # Normalize across batch
-            channel_magnitudes = torch.norm(features, dim=0)  # [feat_dim]
+            # Encourage L2 norm to be spread across channels evenly by minimizing the standard deviation of channel magnitudes
 
-            # Minimize variance of channel magnitudes for even spread
+            channel_magnitudes = torch.norm(features, dim=0)  # [feat_dim]
             loss = torch.var(channel_magnitudes)
 
         elif mode == "adversarial":
-            # Simulate the defense: if top-k channels are removed,
-            # the attack should still succeed on remaining channels
-            # This encourages redundancy in trigger encoding
-            feat_dim = features.shape[1]
-            k = self.args.removed_channel_num
+            # if top-k channels are removed, the attack should still succeed on remaining channels. This encourages redundancy in trigger encoding
 
             # Get top-k channels by magnitude
-            top_k_vals, top_k_indices = torch.topk(torch.abs(features).mean(dim=0), k)
-
+            feat_dim = features.shape[1]
+            k = self.args.removed_channel_num
+            _, top_k_indices = torch.topk(torch.abs(features).mean(dim=0), k)
             # Create mask for remaining channels after defense
             remaining_mask = torch.ones(feat_dim, device=features.device)
             remaining_mask[top_k_indices] = 0
-
-            # Loss: minimize the magnitude of top-k channels while keeping others
-            # This way, when top-k are removed, remaining channels still contain info
+            # when top-k are removed, remaining channels still contain info
             masked_features = features * remaining_mask.unsqueeze(0)
             loss = -torch.norm(masked_features, p=2) / (
                 torch.norm(features, p=2) + 1e-8
             )
+        elif mode == "l1_cv":
+            # L1 coefficient-of-variation minimization: even out absolute magnitudes per-channel L1 across the batch. Alternative to L2 spread
+
+            if features.numel() == 0:
+                return None
+            feat_abs = torch.abs(features)
+            channel_l1 = feat_abs.sum(dim=0)  # [feat_dim]
+            mean = channel_l1.mean()
+            if not torch.isfinite(mean) or mean.abs() < 1e-12:
+                return None
+            loss = torch.var(channel_l1) / (mean + 1e-8)
+
+        elif mode == "group_entropy":
+            # Partition channels into G groups and maximize entropy across groups
+
+            G = getattr(self.args, "group_entropy_G", 8)
+            D = features.shape[1]
+            if G <= 0:
+                return None
+            # compute group boundaries (as even as possible)
+            group_sizes = [D // G] * G
+            # Distributes the remainder (D % G) by adding 1 to the first remainder groups so the leftover channels are spread one-per-group.
+            for i in range(D % G):
+                group_sizes[i] += 1
+
+            abs_feat = torch.abs(features)  # [bs, D]
+            # accumulate group energies per sample
+            groups = []
+            idx = 0
+            for size in group_sizes:
+                if size == 0:
+                    groups.append(torch.zeros(features.size(0), device=features.device))
+                else:
+                    groups.append(abs_feat[:, idx : idx + size].sum(dim=1))
+                idx += size
+            group_tensor = torch.stack(groups, dim=1)  # [bs, G]
+            denom = group_tensor.sum(dim=1, keepdim=True) + 1e-8
+            probs = group_tensor / denom
+            ent = -torch.sum(probs * torch.log(probs + 1e-8), dim=1)
+            # maximize entropy across groups -> negative loss
+            loss = -ent.mean()
+        elif mode == "tv":
+            # Total variation across channel means: encourage smoothness so no abrupt spikes
+
+            # compute mean absolute activation per channel across batch
+            if features.numel() == 0:
+                return None
+            m = torch.abs(features).mean(dim=0)  # [D]
+            if m.numel() < 2:
+                return None
+            tv = torch.mean(torch.abs(m[1:] - m[:-1]))
+            loss = tv
+
+        elif mode == "corr_penalty":
+            # Penalize off-diagonal entries of channel covariance/correlation matrix to discourage concentrated correlation between a few channels.
+
+            D = features.shape[1]
+            bs = features.shape[0]
+            if bs < 2 or D < 2:
+                return None
+            # optional subsampling for large D to limit cost
+            max_ch = getattr(self.args, "corr_penalty_max_channels", 1024)
+            if D > max_ch:
+                # sample a subset of channels deterministically for stability
+                idx = torch.linspace(0, D - 1, steps=max_ch).long().to(features.device)
+                X = features[:, idx]
+            else:
+                X = features
+
+            # center
+            X = X - X.mean(dim=0, keepdim=True)
+            # compute covariance (small, controlled by max_ch)
+            try:
+                cov = (X.t() @ X) / (X.size(0) - 1)
+            except Exception:
+                return None
+            # zero diagonal and sum squared off-diagonals
+            diag = torch.diag(cov)
+            total = torch.sum(cov * cov)
+            diag_sum = torch.sum(diag * diag)
+            off_diag_sum = total - diag_sum
+            # normalize by squared Frobenius norm for scale invariance
+            denom = total + 1e-8
+            loss = off_diag_sum / denom
         elif mode == "svd_correlation":
+            # not used
             if epoch < self.args.svd_start_epoch:
                 # Don't apply SVD-based loss until certain epoch to allow stable SVD computation
                 # create a zero scalar that matches `features` dtype/device
@@ -948,7 +1019,6 @@ class CLTrainer:
                 #     # except Exception:
                 #     #     # give up for this batch
                 #     return None
-
         else:
             raise ValueError(f"Unknown adaptive attack mode: {mode}")
 

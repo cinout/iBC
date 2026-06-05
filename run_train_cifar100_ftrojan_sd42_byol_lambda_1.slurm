@@ -1,11 +1,11 @@
 #!/bin/bash
 
-###SBATCH --partition=gpu-a100
+#SBATCH --partition=gpu-a100
 
 ###SBATCH --partition=gpu-a100-short
 
-#SBATCH --partition=feit-gpu-a100
-#SBATCH --qos=feit
+###SBATCH --partition=feit-gpu-a100
+###SBATCH --qos=feit
 
 ###SBATCH --partition=deeplearn
 ###SBATCH --qos=gpgpudeeplearn
@@ -45,6 +45,7 @@ python -u main_train.py \
     --use_adaptive_attack \
     --adaptive_attack_lambda 1 \
     --adaptive_attack_mode adversarial \
+    --knn_eval_freq 100 \
 \
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \
