@@ -7,7 +7,26 @@ from pyparsing import Dict, Optional
 
 # FIXME: update
 file_names = [
-    "results_vit_r105v45",
+    "results_ada_adversarial_lambda_0.2",
+    "results_ada_adversarial_lambda_0.5",
+    "results_ada_adversarial_lambda_1",
+    "results_ada_adversarial_lambda_2",
+    "results_ada_corr_penalty_lambda_0.2",
+    "results_ada_corr_penalty_lambda_0.5",
+    "results_ada_corr_penalty_lambda_1",
+    "results_ada_corr_penalty_lambda_2",
+    "results_ada_l1_cv_lambda_0.2",
+    "results_ada_l1_cv_lambda_0.5",
+    "results_ada_l1_cv_lambda_1",
+    "results_ada_l1_cv_lambda_2",
+    "results_ada_tv_lambda_0.2",
+    "results_ada_tv_lambda_0.5",
+    "results_ada_tv_lambda_1",
+    "results_ada_tv_lambda_2",
+    "results_ada_group_entropy_lambda_0.2",
+    "results_ada_group_entropy_lambda_0.5",
+    "results_ada_group_entropy_lambda_1",
+    "results_ada_group_entropy_lambda_2",
 ]
 
 for file_name in file_names:
@@ -38,16 +57,16 @@ for file_name in file_names:
 
                     # FIXME: update
                     # # backdoored (uncleansed) data
-                    if classifier == "knn":
-                        if metric == "clean_acc":
-                            result_key = "clean_acc_800"
-                        elif metric == "back_asr":
-                            result_key = "back_acc_800"
-                    elif classifier == "linear":
-                        if metric == "clean_acc":
-                            result_key = "linear_ACC"
-                        elif metric == "back_asr":
-                            result_key = "linear_ASR"
+                    # if classifier == "knn":
+                    #     if metric == "clean_acc":
+                    #         result_key = "clean_acc_800"
+                    #     elif metric == "back_asr":
+                    #         result_key = "back_acc_800"
+                    # elif classifier == "linear":
+                    #     if metric == "clean_acc":
+                    #         result_key = "linear_ACC"
+                    #     elif metric == "back_asr":
+                    #         result_key = "linear_ASR"
 
                     ## cleansed data
                     result_key = f"{classifier}_{metric}"

@@ -1,0 +1,4 @@
+python3 scripts/parse_slurm_out_extended.py results/ada_adversarial_lambda_0.2 -o results/results_ada_adversarial_lambda_0.2.json -f json
+python3 scripts/parse_slurm_out_extended.py results/ada_adversarial_lambda_0.5 -o results/results_ada_adversarial_lambda_0.5.json -f json
+python3 scripts/parse_slurm_out_extended.py results/ada_adversarial_lambda_1 -o results/results_ada_adversarial_lambda_1.json -f json
+python3 scripts/parse_slurm_out_extended.py results/ada_adversarial_lambda_2 -o results/results_ada_adversarial_lambda_2.json -f json
