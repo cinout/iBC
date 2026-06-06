@@ -4,12 +4,12 @@
 
 ###SBATCH --partition=gpu-a100-short
 
-#SBATCH --partition=feit-gpu-a100
-#SBATCH --qos=feit
+###SBATCH --partition=feit-gpu-a100
+###SBATCH --qos=feit
 
-###SBATCH --partition=deeplearn
-###SBATCH --qos=gpgpudeeplearn
-###SBATCH --constraint=dlg4|dlg5|dlg6
+#SBATCH --partition=deeplearn
+#SBATCH --qos=gpgpudeeplearn
+#SBATCH --constraint=dlg4|dlg5|dlg6
 
 #SBATCH --job-name="c100_h"
 #SBATCH --account=punim1623
@@ -53,6 +53,9 @@ srun python -u main_train.py \
     --magnitude_val 300.0 \
     --dataset imagenet100 \
     --target_class 26 \
+    --use_ibc \
+    --find_channels_from_n_poison_samples 4 \
+    --find_channels_from_n_clean_samples 0 \
     
     \
     #--pretrained_ssl_model "./Experiments/cifar100_htba_mocov2_ref_set_sd42/last.pth.tar" \

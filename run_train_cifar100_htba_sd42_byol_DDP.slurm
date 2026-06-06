@@ -53,6 +53,9 @@ srun python -u main_train.py \
     --magnitude_val 300.0 \
     --dataset imagenet100 \
     --target_class 26 \
+    --use_ibc \
+    --find_channels_from_n_poison_samples 4 \
+    --find_channels_from_n_clean_samples 0 \
     
     \
     #--pretrained_ssl_model "./Experiments/cifar100_htba_byol_ref_set_sd42/last.pth.tar" \
