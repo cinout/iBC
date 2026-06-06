@@ -47,7 +47,7 @@ python -u main_train.py \
     \
     --use_adaptive_attack \
     --adaptive_attack_lambda 0.5 \
-    --adaptive_attack_mode tv \
+    --adaptive_attack_mode group_entropy \
     --knn_eval_freq 100 \
 \
     --use_ibc \
