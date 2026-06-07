@@ -316,6 +316,7 @@ def eval_linear_classifier(
     val_mode,
     use_ss_detector,
     contributing_indices,
+    clean_channel_means,
 ):
     with torch.no_grad():
 
@@ -349,7 +350,16 @@ def eval_linear_classifier(
 
             if use_ss_detector:
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
-                output[:, indices_toremove] = 0.0
+
+                if args.replace_removed_with_clean_mean:
+                    rep = (
+                        clean_channel_means[indices_toremove]
+                        .unsqueeze(0)
+                        .to(output.device)
+                    )
+                    output[:, indices_toremove] = rep.expand(output.size(0), -1)
+                else:
+                    output[:, indices_toremove] = 0.0
 
             acc1_accumulator, total_count = produces_evaluation_results(
                 linear, output, target, acc1_accumulator, total_count
@@ -821,6 +831,7 @@ class CLTrainer:
             val_mode="clean",
             use_ss_detector=False,
             contributing_indices=None,
+            clean_channel_means=self.clean_channel_means,
         )
         poison_acc1 = eval_linear_classifier(
             poison.test_pos_loader,
@@ -831,6 +842,7 @@ class CLTrainer:
             val_mode="poison",
             use_ss_detector=False,
             contributing_indices=None,
+            clean_channel_means=self.clean_channel_means,
         )
 
         print(
@@ -1273,6 +1285,7 @@ class CLTrainer:
             val_mode="clean",
             use_ss_detector=True,
             contributing_indices=contributing_indices,
+            clean_channel_means=self.clean_channel_means,
         )
         poison_acc1 = eval_linear_classifier(
             poison.test_pos_loader,
@@ -1283,6 +1296,7 @@ class CLTrainer:
             val_mode="poison",
             use_ss_detector=True,
             contributing_indices=contributing_indices,
+            clean_channel_means=self.clean_channel_means,
         )
 
         print(
@@ -1348,6 +1362,10 @@ class CLTrainer:
         # feature_bank: [dim, total num]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
 
+        # compute per-channel mean over memory (clean) bank for replacement strategy
+        # shape: [dim]
+        self.clean_channel_means = feature_bank.mean(dim=1)
+
         # feature_labels: [total num] -- build from the label_bank to ensure alignment
         feature_labels = torch.cat(label_bank, dim=0).long().to(feature_bank.device)
 
@@ -1380,9 +1398,17 @@ class CLTrainer:
                 feature = net(data)
 
             if use_SS_detector:
-
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
-                feature[:, indices_toremove] = 0.0
+                if args.replace_removed_with_clean_mean:
+                    # use per-channel mean computed from memory bank to preserve clean feature statistics
+                    rep = (
+                        self.clean_channel_means[indices_toremove]
+                        .unsqueeze(0)
+                        .to(feature.device)
+                    )
+                    feature[:, indices_toremove] = rep.expand(feature.size(0), -1)
+                else:
+                    feature[:, indices_toremove] = 0.0
 
             feature = F.normalize(feature, dim=1)
             pred_labels = self.knn_predict(
@@ -1433,9 +1459,16 @@ class CLTrainer:
                 feature = net(data)
 
             if use_SS_detector:
-
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
-                feature[:, indices_toremove] = 0.0
+                if args.replace_removed_with_clean_mean:
+                    rep = (
+                        self.clean_channel_means[indices_toremove]
+                        .unsqueeze(0)
+                        .to(feature.device)
+                    )
+                    feature[:, indices_toremove] = rep.expand(feature.size(0), -1)
+                else:
+                    feature[:, indices_toremove] = 0.0
 
             feature = F.normalize(feature, dim=1)
             # feature: [bsz, dim]
