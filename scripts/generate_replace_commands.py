@@ -11,6 +11,7 @@ Usage:
 By default it searches recursively under `results/` for files ending with
 `.out`.
 """
+
 import argparse
 import os
 import re
@@ -52,8 +53,12 @@ def process_file(p: Path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--input-dir", default="results", help="root to search for .out files")
-    ap.add_argument("--out", default="replace_saved_paths.sh", help="output shell script")
+    ap.add_argument(
+        "--input-dir", default="results", help="root to search for .out files"
+    )
+    ap.add_argument(
+        "--out", default="replace_saved_paths.sh", help="output shell script"
+    )
     args = ap.parse_args()
 
     root = Path(args.input_dir)
@@ -70,21 +75,34 @@ def main():
         print("No matching slurm .out files with required keys found.")
         return
 
-    out_lines = ["#!/usr/bin/env bash\n", "# Generated replace commands. Backup files with .bak created.\n"]
+    out_lines = [
+        "#!/usr/bin/env bash\n",
+        "# Generated rename commands. Run from project root.\n",
+    ]
+    out_lines.append("set -euo pipefail\n\n")
+    out_lines.append("# For safety this script will check existence before moving.\n")
     for old, new, src in matches:
-        # Escape for perl substitution delimeter |
-        old_esc = old.replace("\\", "\\\\").replace("|", "\\|")
-        new_esc = new.replace("\\", "\\\\").replace("|", "\\|")
-        # Protect single quotes inside the single-quoted perl expression
-        old_esc = shell_quote_single(old_esc)
-        new_esc = shell_quote_single(new_esc)
-        # Use perl to perform an in-place, whole-file substitution with backup
-        cmd = f"perl -0777 -pe 's|{old_esc}|{new_esc}|g' -i.bak {sh_quote(src)}\n"
-        out_lines.append(cmd)
+        old_q = sh_quote(old)
+        new_q = sh_quote(new)
+        parent_new = sh_quote(os.path.dirname(new) or ".")
+        out_lines.append(
+            f'echo "[INFO] Processing {sh_quote(src)} -> move {old_q} -> {new_q}"\n'
+        )
+        out_lines.append(f"if [ -e {old_q} ]; then\n")
+        out_lines.append(f"  if [ -e {new_q} ]; then\n")
+        out_lines.append(f'    echo "[SKIP] target exists: {new_q}"\n')
+        out_lines.append(f"  else\n")
+        out_lines.append(f"    mkdir -p {parent_new}\n")
+        out_lines.append(f'    echo "[MOVE] {old_q} -> {new_q}"\n')
+        out_lines.append(f"    mv -- {old_q} {new_q}\n")
+        out_lines.append(f"  fi\n")
+        out_lines.append(f"else\n")
+        out_lines.append(f'  echo "[WARN] source not found: {old_q}"\n')
+        out_lines.append(f"fi\n\n")
 
     Path(args.out).write_text("".join(out_lines))
     os.chmod(args.out, 0o755)
-    print(f"Wrote {args.out} with {len(matches)} commands")
+    print(f"Wrote {args.out} with {len(matches)} move commands")
 
 
 def sh_quote(s: str) -> str:
