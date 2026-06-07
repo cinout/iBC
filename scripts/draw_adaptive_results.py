@@ -1,7 +1,7 @@
 # FIXME: change adaptive attack name
 import json
 
-attack_name = "entro_defense_replace_with_mean"  # entropy, l2_spread, adversarial, corr_penalty, tv, l1_cv, group_entropy
+attack_name = "entro_defense_replace_with_mean_plus_std"  # entropy, l2_spread, adversarial, corr_penalty, tv, l1_cv, group_entropy
 mean_values = {}
 
 mean_values[f"lambda_0"] = {

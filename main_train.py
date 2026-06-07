@@ -237,10 +237,8 @@ parser.add_argument(
 
 parser.add_argument(
     "--replace_removed_with_clean_mean",
-    dest="replace_removed_with_clean_mean",
     action="store_true",
     help="When applying iBC channel removal, replace removed channels with clean-channel means instead of zeroing",
-    default=True,
 )
 parser.add_argument(
     "--replace_with_noise",
