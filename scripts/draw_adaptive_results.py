@@ -1,7 +1,7 @@
 # FIXME: change adaptive attack name
 import json
 
-attack_name = "group_entropy"  # entropy, l2_spread, adversarial, corr_penalty, tv, l1_cv, group_entropy
+attack_name = "entro_defense_replace_with_mean"  # entropy, l2_spread, adversarial, corr_penalty, tv, l1_cv, group_entropy
 mean_values = {}
 
 mean_values[f"lambda_0"] = {
@@ -17,9 +17,8 @@ lmabda_keys = ["0.2", "0.5", "1", "2"]
 methods = ["byol", "mocov2", "simclr"]
 trigger_types = ["ftrojan", "htba"]
 for lambda_key in lmabda_keys:
-    json_file_path = (
-        f"results/adaptive/results_ada_{attack_name}_lambda_{lambda_key}.json"
-    )
+    # FIXME: change path if needed
+    json_file_path = f"results/results_ada_{attack_name}_lambda_{lambda_key}.json"
     # read json file
     with open(json_file_path, "r") as f:
         content = json.load(f)

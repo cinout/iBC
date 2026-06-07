@@ -317,6 +317,7 @@ def eval_linear_classifier(
     use_ss_detector,
     contributing_indices,
     clean_channel_means,
+    clean_channel_stds,
 ):
     with torch.no_grad():
 
@@ -351,7 +352,23 @@ def eval_linear_classifier(
             if use_ss_detector:
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
 
-                if args.replace_removed_with_clean_mean:
+                if args.replace_with_noise:
+                    b = output.size(0)
+                    rep_mean = (
+                        clean_channel_means[indices_toremove]
+                        .unsqueeze(0)
+                        .to(output.device)
+                    )
+                    rep_std = (
+                        clean_channel_stds[indices_toremove]
+                        .unsqueeze(0)
+                        .to(output.device)
+                    )
+                    noise = torch.randn((b, rep_mean.size(1)), device=output.device) * (
+                        rep_std * args.noise_scale
+                    )
+                    output[:, indices_toremove] = rep_mean.expand(b, -1) + noise
+                elif args.replace_removed_with_clean_mean:
                     rep = (
                         clean_channel_means[indices_toremove]
                         .unsqueeze(0)
@@ -462,7 +479,6 @@ class CLTrainer:
                 or key.find("queue") != -1
                 or key.find("queue_ptr") != -1
             ):
-                # ignore
                 continue
             if key.endswith(".weight") or key.endswith(".bias"):
                 p = self.args.bcu_layerwise_ratio[0]
@@ -832,6 +848,7 @@ class CLTrainer:
             use_ss_detector=False,
             contributing_indices=None,
             clean_channel_means=self.clean_channel_means,
+            clean_channel_stds=self.clean_channel_stds,
         )
         poison_acc1 = eval_linear_classifier(
             poison.test_pos_loader,
@@ -843,6 +860,7 @@ class CLTrainer:
             use_ss_detector=False,
             contributing_indices=None,
             clean_channel_means=self.clean_channel_means,
+            clean_channel_stds=self.clean_channel_stds,
         )
 
         print(
@@ -1286,6 +1304,7 @@ class CLTrainer:
             use_ss_detector=True,
             contributing_indices=contributing_indices,
             clean_channel_means=self.clean_channel_means,
+            clean_channel_stds=self.clean_channel_stds,
         )
         poison_acc1 = eval_linear_classifier(
             poison.test_pos_loader,
@@ -1297,6 +1316,7 @@ class CLTrainer:
             use_ss_detector=True,
             contributing_indices=contributing_indices,
             clean_channel_means=self.clean_channel_means,
+            clean_channel_stds=self.clean_channel_stds,
         )
 
         print(
@@ -1362,9 +1382,9 @@ class CLTrainer:
         # feature_bank: [dim, total num]
         feature_bank = torch.cat(feature_bank, dim=0).t().contiguous()
 
-        # compute per-channel mean over memory (clean) bank for replacement strategy
-        # shape: [dim]
+        # compute per-channel mean and std over memory (clean) bank for replacement strategies
         self.clean_channel_means = feature_bank.mean(dim=1)
+        self.clean_channel_stds = feature_bank.std(dim=1, unbiased=False)
 
         # feature_labels: [total num] -- build from the label_bank to ensure alignment
         feature_labels = torch.cat(label_bank, dim=0).long().to(feature_bank.device)
@@ -1399,8 +1419,24 @@ class CLTrainer:
 
             if use_SS_detector:
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
-                if args.replace_removed_with_clean_mean:
-                    # use per-channel mean computed from memory bank to preserve clean feature statistics
+
+                if args.replace_with_noise:
+                    b = feature.size(0)
+                    rep_mean = (
+                        self.clean_channel_means[indices_toremove]
+                        .unsqueeze(0)
+                        .to(feature.device)
+                    )
+                    rep_std = (
+                        self.clean_channel_stds[indices_toremove]
+                        .unsqueeze(0)
+                        .to(feature.device)
+                    )
+                    noise = torch.randn(
+                        (b, rep_mean.size(1)), device=feature.device
+                    ) * (rep_std * args.noise_scale)
+                    feature[:, indices_toremove] = rep_mean.expand(b, -1) + noise
+                elif args.replace_removed_with_clean_mean:
                     rep = (
                         self.clean_channel_means[indices_toremove]
                         .unsqueeze(0)
@@ -1460,7 +1496,24 @@ class CLTrainer:
 
             if use_SS_detector:
                 indices_toremove = contributing_indices[0 : args.removed_channel_num]
-                if args.replace_removed_with_clean_mean:
+
+                if args.replace_with_noise:
+                    b = feature.size(0)
+                    rep_mean = (
+                        self.clean_channel_means[indices_toremove]
+                        .unsqueeze(0)
+                        .to(feature.device)
+                    )
+                    rep_std = (
+                        self.clean_channel_stds[indices_toremove]
+                        .unsqueeze(0)
+                        .to(feature.device)
+                    )
+                    noise = torch.randn(
+                        (b, rep_mean.size(1)), device=feature.device
+                    ) * (rep_std * args.noise_scale)
+                    feature[:, indices_toremove] = rep_mean.expand(b, -1) + noise
+                elif args.replace_removed_with_clean_mean:
                     rep = (
                         self.clean_channel_means[indices_toremove]
                         .unsqueeze(0)

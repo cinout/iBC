@@ -242,6 +242,18 @@ parser.add_argument(
     help="When applying iBC channel removal, replace removed channels with clean-channel means instead of zeroing",
     default=True,
 )
+parser.add_argument(
+    "--replace_with_noise",
+    action="store_true",
+    help="Replace removed channels with Gaussian noise centered at clean mean scaled by channel std",
+    default=False,
+)
+parser.add_argument(
+    "--noise_scale",
+    type=float,
+    default=0.1,
+    help="Noise scale multiplier relative to per-channel std when using --replace_with_noise",
+)
 
 
 """

@@ -47,7 +47,7 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --replace_removed_with_clean_mean \
+    --replace_with_noise \
     --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
