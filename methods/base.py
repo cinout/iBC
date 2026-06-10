@@ -893,7 +893,7 @@ class CLTrainer:
             # L2 normalize to get probability-like distribution
             feat_norm = F.normalize(features, p=2, dim=1)  # [bs, feat_dim]
             # Compute Shannon entropy: -sum(p * log(p)) for each sample. Higher entropy means more uniform activation across channels
-            feat_abs = torch.abs(feat_norm)
+            feat_abs = torch.abs(feat_norm)  # [bs, feat_dim]
             feat_probs = feat_abs / (feat_abs.sum(dim=1, keepdim=True) + 1e-8)
             entropy = -torch.sum(feat_probs * torch.log(feat_probs + 1e-8), dim=1)
             # we want to maximize entropy to spread activation
