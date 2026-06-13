@@ -594,8 +594,6 @@ class CLTrainer:
                         + str(epoch)
                         + ".pth",
                     )
-                if dist.is_initialized():
-                    dist.barrier()
 
     """
     Baseline: RNP (ICML 2023), called when args.use_rnp==True
@@ -832,8 +830,8 @@ class CLTrainer:
                     linear.state_dict(),
                     filename=os.path.join(self.args.saved_path, "linear.pth.tar"),
                 )
-            if dist.is_initialized():
-                dist.barrier()
+            # if dist.is_initialized():
+            #     dist.barrier()
 
         # evaluation of linear (uncleansed)
         backbone.eval()

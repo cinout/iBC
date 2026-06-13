@@ -7,6 +7,8 @@ attack_names = [
     "l2_spread",
     "tv",
     "entropy",
+    "entro_defense_remove5",
+    # "entro_defense_remove5_replace_with_mean",
 ]  # entro, l2_spread, adversarial, corr_penalty, tv, l1_cv, group_entropy
 
 full_names = {
@@ -14,6 +16,8 @@ full_names = {
     "l2_spread": "L2-norm variance penalty",
     "tv": "smoothness regularization",
     "entropy": "entropy maximization",
+    "entro_defense_remove5": "entropy maximization (remove 5 channels)",
+    # "entro_defense_remove5_replace_with_mean": "entropy maximization (remove 5 channels)",
 }
 
 # results: [ACC_htba, ACC_Ftrojan, ASR_htba, ASR_Ftrojan]
@@ -96,7 +100,7 @@ lambda_order = ["lambda_0", "lambda_0.2", "lambda_0.5", "lambda_1", "lambda_2"]
 lambda_labels = ["0", "0.2", "0.5", "1", "2"]
 
 n_attacks = len(attack_names)
-fig, axes = plt.subplots(n_attacks, 1, figsize=(12, 4 * n_attacks), sharey=True)
+fig, axes = plt.subplots(n_attacks, 1, figsize=(12, 3 * n_attacks), sharey=True)
 axes = np.atleast_1d(axes)
 
 bar_width = 0.22
@@ -124,14 +128,12 @@ for ax, attack in zip(axes, attack_names):
     p2 = ind + 0.5 * bar_width
     p3 = ind + 1.5 * bar_width
 
-    b0 = ax.bar(p0, series["uncleansed_acc"], width=bar_width, color="tab:blue")
+    b0 = ax.bar(p0, series["uncleansed_acc"], width=bar_width, color="cornflowerblue")
     b1 = ax.bar(
-        p1, series["cleansed_acc"], width=bar_width, color="tab:blue", alpha=0.7
+        p1, series["cleansed_acc"], width=bar_width, color="cornflowerblue", alpha=0.7
     )
-    b2 = ax.bar(p2, series["uncleansed_asr"], width=bar_width, color="tab:orange")
-    b3 = ax.bar(
-        p3, series["cleansed_asr"], width=bar_width, color="tab:orange", alpha=0.7
-    )
+    b2 = ax.bar(p2, series["uncleansed_asr"], width=bar_width, color="coral")
+    b3 = ax.bar(p3, series["cleansed_asr"], width=bar_width, color="coral", alpha=0.7)
 
     # apply hatch to ASR bars
     for b in list(b2) + list(b3):
@@ -139,55 +141,58 @@ for ax, attack in zip(axes, attack_names):
         b.set_edgecolor("k")
         b.set_linewidth(0.5)
 
-    # annotate
-    for bars in (b0, b1, b2, b3):
-        for b in bars:
-            y = b.get_height() if b.get_height() is not None else 0
-            offset = 0.25
-            # offset = 0.5 if abs(y) < 1 else abs(y) * 0.02
-            ax.text(
-                b.get_x() + b.get_width() / 2,
-                y + offset,
-                f"{y:.2f}",
-                ha="center",
-                va="bottom",
-                fontsize=11,
-                # fontweight="bold",
-            )
+    # # annotate
+    # for bars in (b0, b1, b2, b3):
+    #     for b in bars:
+    #         y = b.get_height() if b.get_height() is not None else 0
+    #         offset = 0.25
+    #         # offset = 0.5 if abs(y) < 1 else abs(y) * 0.02
+    #         ax.text(
+    #             b.get_x() + b.get_width() / 2,
+    #             y + offset,
+    #             f"{y:.2f}",
+    #             ha="center",
+    #             va="bottom",
+    #             fontsize=11,
+    #             # fontweight="bold",
+    #         )
 
     ax.set_xticks(ind)
-    ax.set_xticklabels(lambda_labels)
-    ax.set_title(full_names.get(attack), fontweight="bold", fontsize=18)
-    ax.set_ylabel("ACC/ASR %", fontsize=14)
+    ax.set_xticklabels(lambda_labels, fontsize=19)
+    ax.tick_params(axis="y", labelsize=19)
+    ax.set_title(full_names.get(attack), fontweight="bold", fontsize=19)
+    ax.set_ylabel("ACC/ASR %", fontsize=19)
     if attack == attack_names[-1]:
-        ax.set_xlabel(r"$\lambda$", fontsize=14)
+        ax.set_xlabel(r"$\alpha$", fontsize=22)
 
 # legend for Acc vs ASR
 legend_elements = [
     Patch(
-        facecolor="tab:blue",
+        facecolor="cornflowerblue",
         label="ACC (Uncleansed)",
     ),
     Patch(
-        facecolor="tab:blue",
-        alpha=0.7,
-        label="ACC (Cleansed)",
-    ),
-    Patch(
-        facecolor="tab:orange",
+        facecolor="coral",
         hatch="///",
         edgecolor="k",
         label="ASR (Uncleansed)",
     ),
     Patch(
-        facecolor="tab:orange",
+        facecolor="cornflowerblue",
+        alpha=0.7,
+        label="ACC (Cleansed)",
+    ),
+    Patch(
+        facecolor="coral",
         alpha=0.7,
         hatch="///",
         edgecolor="k",
         label="ASR (Cleansed)",
     ),
 ]
-axes[0].legend(handles=legend_elements, loc="upper right", fontsize=13)
+axes[0].legend(
+    handles=legend_elements, ncol=2, loc="upper right", fontsize=16, framealpha=0.6
+)
 # fig.suptitle("Adaptive attacks summary")
 fig.tight_layout(rect=(0, 0, 1, 0.95))
-plt.savefig("adaptive_attacks_summary.png", dpi=200)
+plt.savefig("adaptive_attacks_summary.pdf", bbox_inches="tight", dpi=300)

@@ -627,13 +627,13 @@ def main(args):
     # SSL attack and KNN Evaluation [Poisoned Model]
     trainer.train_freq(model, optimizer, train_transform, poison)
 
-    # synchronize and run only rank 0 for downstream evaluation and baselines
-    if dist.is_initialized():
-        dist.barrier()
+    # # synchronize and run only rank 0 for downstream evaluation and baselines
+    # if dist.is_initialized():
+    #     dist.barrier()
 
-        is_main = (not args.distributed) or (dist.get_rank() == 0)
-        if not is_main:
-            return
+    #     is_main = (not args.distributed) or (dist.get_rank() == 0)
+    #     if not is_main:
+    #         return
 
     backbone = extract_backbone(args.method, model, args.arch)
 

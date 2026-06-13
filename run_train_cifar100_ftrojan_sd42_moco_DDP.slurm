@@ -1,0 +1,68 @@
+#!/bin/bash
+
+###SBATCH --partition=gpu-a100
+
+###SBATCH --partition=gpu-a100-short
+
+#SBATCH --partition=feit-gpu-a100
+#SBATCH --qos=feit
+
+###SBATCH --partition=deeplearn
+###SBATCH --qos=gpgpudeeplearn
+###SBATCH --constraint=dlg4|dlg5|dlg6
+
+#SBATCH --job-name="c100_f"
+#SBATCH --account=punim1623
+#SBATCH --time=0-04:00:00
+
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --gres=gpu:1
+###### "ntasks-per-node" should have same value as "res=gpu:"
+
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=250G
+
+# export WORLD_SIZE=4   ####FIXME: update world size: nodes x ntasks-per-node
+# export MASTER_PORT=12340
+
+# echo ">>> NODELIST="${SLURM_NODELIST}
+# master_addr=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
+# export MASTER_ADDR=$master_addr
+# echo ">>> MASTER_ADDR="$MASTER_ADDR
+
+module purge
+
+eval "$(conda shell.bash hook)"
+conda activate anogpt
+
+srun python -u main_train.py \
+    --method mocov2 \
+    --trigger_type ftrojan \
+    --arch vit_b_16 \
+    --image_size 224 \
+    --pretrain_batch_size 32 \
+    --lr 1.5e-4 \
+    --wd 0.1 \
+    --temp 0.1 \
+    --knn_eval_freq 40 \
+    --model_save_freq 40 \
+    --warmup_epoch 40 \
+    --removed_channel_num 105 \
+    --voted_channel_num 45 \
+    \
+    --use_ibc \
+    --find_channels_from_n_poison_samples 4 \
+    --find_channels_from_n_clean_samples 0 \
+    \
+    --magnitude_train 300.0 \
+    --magnitude_val 300.0 \
+    --dataset imagenet100 \
+    --target_class 26 \
+    \
+    --pretrained_ssl_model "./Experiments/vit_set2_imagenet100_ftrojan_mocov2_sd42/encoder.pth.tar" \
+    --pretrained_linear_model "./Experiments/vit_set2_imagenet100_ftrojan_mocov2_sd42/linear.pth.tar" \
+
+
+##Log this job's resource usage stats###
+my-job-stats -a -n -s
