@@ -252,7 +252,28 @@ parser.add_argument(
     default=0.1,
     help="Noise scale multiplier relative to per-channel std when using --replace_with_noise",
 )
-
+parser.add_argument(
+    "--input_filter_method",
+    type=str,
+    default="spectral_signatures",
+    choices=["spectral_signatures", "strip", "activation_clustering"],
+    help="method used to estimate which poisoned training images are most suspicious",
+)
+parser.add_argument(
+    "--strip_repeats",
+    type=int,
+    default=8,
+    help="number of perturbations used by the STRIP-style input filter",
+)
+parser.add_argument(
+    "--strip_noise",
+    type=float,
+    default=0.05,
+    help="noise scale used by the STRIP-style input filter",
+)
+parser.add_argument(
+    "--end2end", action="store_true", help="if set, the input filter will be applied"
+)
 
 """
 Defense Baseline: RandomDrop

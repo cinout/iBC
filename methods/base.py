@@ -131,6 +131,148 @@ def generate_view_tensors(input, ss_transform):
 
 
 """
+Backdoor input filtering helpers.
+
+These estimate which images in the poisoned training set are most likely to
+contain the trigger. The common recipe is: compute a per-sample "backdoor score"
+from the model's behavior or representation, then keep the top-k images with the
+largest score.
+
+References:
+- Spectral Signatures: Tran, Li, and Madry, NeurIPS 2018.
+- STRIP: Gao et al., ACSAC 2019.
+- Activation Clustering: Chen et al., NDSS 2019.
+"""
+
+
+def rank_poisoned_indices_by_score(score_map, top_k):
+    if top_k <= 0:
+        return []
+
+    ranked = sorted(
+        score_map.keys(), key=lambda idx: float(score_map[idx]), reverse=True
+    )
+    return ranked[: min(top_k, len(ranked))]
+
+
+def estimate_poisoned_indices(
+    args,
+    dataset,
+    backbone,
+    normalize_transform,
+    method=None,
+):
+
+    data_loader = DataLoader(
+        dataset, batch_size=args.linear_probe_batch_size, shuffle=False
+    )  # do not shuffle as we need the correct indices of images
+
+    score_map = {}
+    if method == "spectral_signatures":
+        # Spectral Signatures: poisoned inputs align strongly with the dominant
+        # activation direction that explains trigger-induced outliers.
+        feature_bank = []
+        with torch.no_grad():
+            for _, content in enumerate(data_loader):
+                images = content[0].to(device)
+                images = normalize_transform(images)
+                feats = backbone(images)
+                feature_bank.append(feats.detach().cpu().numpy())
+
+        feature_bank = np.concatenate(feature_bank, axis=0)
+        centered = feature_bank - np.mean(feature_bank, axis=0, keepdims=True)
+
+        if centered.size > 0 and centered.shape[0] > 1:
+            _, _, vh = np.linalg.svd(centered, full_matrices=False)
+            trigger_direction = vh[0]
+            scores = np.abs(centered @ trigger_direction)
+        else:
+            scores = np.zeros(feature_bank.shape[0], dtype=np.float32)
+
+        for offset, score in enumerate(scores):
+            score_map[offset] = float(score)
+    # TODO: implement later
+    # elif method == "strip":
+    #     # STRIP: a poisoned sample keeps a low-entropy prediction even when
+    #     # repeatedly perturbed, because the trigger dominates the decision.
+    #     num_perturb = getattr(args, "strip_repeats", 8)
+    #     noise_scale = getattr(args, "strip_noise", 0.05)
+
+    #     with torch.no_grad():
+    #         for batch_idx, content in enumerate(data_loader):
+    #             images = content[0].to(device)
+    #             batch_indices = poisoned_indices[
+    #                 batch_idx
+    #                 * args.linear_probe_batch_size : (batch_idx + 1)
+    #                 * args.linear_probe_batch_size
+    #             ]
+    #             if len(batch_indices) == 0:
+    #                 continue
+
+    #             repeated_probs = []
+    #             for _ in range(num_perturb):
+    #                 perturbed = images + torch.empty_like(images).uniform_(
+    #                     -noise_scale, noise_scale
+    #                 )
+    #                 perturbed = torch.clamp(perturbed, 0.0, 1.0)
+    #                 feats = normalize_transform(perturbed)
+    #                 logits = backbone(feats)
+    #                 probs = torch.softmax(logits, dim=1)
+    #                 repeated_probs.append(probs)
+
+    #             mean_probs = torch.stack(repeated_probs, dim=0).mean(dim=0)
+    #             entropy = -(mean_probs * torch.log(mean_probs.clamp_min(1e-8))).sum(
+    #                 dim=1
+    #             )
+    #             suspicious = -entropy.cpu().numpy()
+
+    #             for sample_idx, score in zip(batch_indices, suspicious):
+    #                 score_map[sample_idx] = float(score)
+    # elif method == "activation_clustering":
+    #     # Activation Clustering style score: poisoned samples form a compact,
+    #     # activation-separated cluster relative to the majority of clean activations.
+    #     feature_bank = []
+    #     with torch.no_grad():
+    #         for batch_idx, content in enumerate(data_loader):
+    #             images = content[0].to(device)
+    #             images = normalize_transform(images)
+    #             feats = backbone(images)
+    #             feature_bank.append(feats.detach().cpu().numpy())
+
+    #     feature_bank = np.concatenate(feature_bank, axis=0)
+    #     if feature_bank.shape[0] < 2:
+    #         for offset, idx in enumerate(poisoned_indices):
+    #             score_map[idx] = 0.0
+    #     else:
+    #         rng = np.random.default_rng(
+    #             getattr(args, "trigger_channel_removal_seed", 42)
+    #         )
+    #         centers = feature_bank[
+    #             rng.choice(feature_bank.shape[0], size=2, replace=False)
+    #         ]
+    #         for _ in range(10):
+    #             dist = ((feature_bank[:, None, :] - centers[None, :, :]) ** 2).sum(
+    #                 axis=2
+    #             )
+    #             labels = dist.argmin(axis=1)
+    #             for c in range(2):
+    #                 if np.any(labels == c):
+    #                     centers[c] = feature_bank[labels == c].mean(axis=0)
+    #         majority_cluster = np.bincount(labels).argmax()
+    #         clean_center = centers[majority_cluster]
+    #         scores = np.linalg.norm(feature_bank - clean_center, axis=1)
+    #         for offset, score in enumerate(scores):
+    #             score_map[poisoned_indices[offset]] = float(score)
+    # else:
+    #     raise ValueError(f"Unknown input filter method: {method}")
+
+    return rank_poisoned_indices_by_score(
+        score_map,
+        args.find_channels_from_n_poison_samples,
+    )
+
+
+"""
 Return the estimated trigger channels.
 
 Return:
@@ -147,23 +289,36 @@ def find_trigger_channels(
 
     # sample a few poisoned/clean images
     dataset = data_loader.dataset
-    poisoned_indices = [
-        i
-        for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
-        if train_is_poisoned == 1
-    ]
-    clean_indices = [
-        i
-        for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
-        if train_is_poisoned == 0
-    ]
-    random_poisoned_indices = random.sample(
-        poisoned_indices, args.find_channels_from_n_poison_samples
-    )
-    random_clean_indices = random.sample(
-        clean_indices, args.find_channels_from_n_clean_samples
-    )
-    all_indices = [*random_poisoned_indices, *random_clean_indices]
+
+    if args.end2end:
+        # use input-filtering methods
+        all_indices = estimate_poisoned_indices(
+            args,
+            dataset,
+            backbone,
+            normalize_transform,
+            method=getattr(args, "input_filter_method", "spectral_signatures"),
+        )
+    else:
+        # assume access to a few poisoned and clean samples
+        poisoned_indices = [
+            i
+            for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
+            if train_is_poisoned == 1
+        ]
+        clean_indices = [
+            i
+            for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
+            if train_is_poisoned == 0
+        ]
+        random_poisoned_indices = random.sample(
+            poisoned_indices, args.find_channels_from_n_poison_samples
+        )
+        random_clean_indices = random.sample(
+            clean_indices, args.find_channels_from_n_clean_samples
+        )
+        all_indices = [*random_poisoned_indices, *random_clean_indices]
+
     subset = Subset(dataset, all_indices)
     data_loader = DataLoader(
         subset, batch_size=args.linear_probe_batch_size, shuffle=False

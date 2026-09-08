@@ -1,0 +1,1 @@
+python3 scripts/parse_slurm_out_extended.py results/vit_set2_r105v45 -o results/results_vit_set2_r105v45.json -f json

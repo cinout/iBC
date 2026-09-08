@@ -14,10 +14,10 @@ attack_names = [
 full_names = {
     "corr_penalty": "correlation penalty",
     "l2_spread": "L2-norm variance penalty",
-    "tv": "smoothness regularization",
-    "entropy": "entropy maximization",
-    "entro_defense_remove5": "entropy maximization (remove 5 channels)",
-    # "entro_defense_remove5_replace_with_mean": "entropy maximization (remove 5 channels)",
+    "tv": "smoothness regularisation",
+    "entropy": "entropy maximisation",
+    "entro_defense_remove5": "entropy maximisation (remove 5 channels)",
+    # "entro_defense_remove5_replace_with_mean": "entropy maximisation (remove 5 channels)",
 }
 
 # results: [ACC_htba, ACC_Ftrojan, ASR_htba, ASR_Ftrojan]
