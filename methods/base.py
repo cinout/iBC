@@ -54,22 +54,26 @@ Return:
 
 
 def ss_statistics(visual_features, bs, feat_dim, args):
+    visual_features_centered = visual_features - np.mean(
+        visual_features, axis=0, keepdims=True
+    )
     u, s, v = np.linalg.svd(
-        visual_features - np.mean(visual_features, axis=0, keepdims=True),
+        visual_features_centered,
         full_matrices=False,
     )
 
     # get top eigenvector
     eig_for_indexing = v[0:1]  # [1, C]
 
+    # TODO: use visual_features_centered (in paper) or visual_features (in our previous experiments)
     corrs = np.matmul(
-        eig_for_indexing, np.transpose(visual_features)
+        eig_for_indexing, np.transpose(visual_features_centered)
     )  # [1, bs*n_view], not .abs() yet.
 
     coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
     coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
     elementwise = (
-        eig_for_indexing * visual_features * coeff_adjust
+        eig_for_indexing * visual_features_centered * coeff_adjust
     )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
 
     # get contributing indices sorted from low to high
