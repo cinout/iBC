@@ -252,6 +252,10 @@ parser.add_argument(
     default=0.1,
     help="Noise scale multiplier relative to per-channel std when using --replace_with_noise",
 )
+# end-2-end input filter options
+parser.add_argument(
+    "--end2end", action="store_true", help="if set, the input filter will be applied"
+)
 parser.add_argument(
     "--input_filter_method",
     type=str,
@@ -271,9 +275,7 @@ parser.add_argument(
     default=0.05,
     help="noise scale used by the STRIP-style input filter",
 )
-parser.add_argument(
-    "--end2end", action="store_true", help="if set, the input filter will be applied"
-)
+
 
 """
 Defense Baseline: RandomDrop
@@ -671,7 +673,7 @@ def main(args):
         linear_clean_acc_list = []
         linear_back_asr_list = []
 
-        for _ in range(10):
+        for _ in range(1 if args.end2end else 10):
             knn_clean, knn_back, linear_clean, linear_back = (
                 trainer.trigger_channel_removal(model, poison, trained_linear)
             )

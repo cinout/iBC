@@ -1,1 +1,1 @@
-python3 scripts/parse_slurm_out_extended.py results/vit_set2_r105v45 -o results/results_vit_set2_r105v45.json -f json
+python3 scripts/parse_slurm_out_extended.py results/default_ss_centred_poi2 -o results/results_default_ss_centred_poi2.json -f json

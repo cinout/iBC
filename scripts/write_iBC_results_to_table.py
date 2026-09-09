@@ -7,26 +7,7 @@ from pyparsing import Dict, Optional
 
 # FIXME: update
 file_names = [
-    "results_ada_adversarial_lambda_0.2",
-    "results_ada_adversarial_lambda_0.5",
-    "results_ada_adversarial_lambda_1",
-    "results_ada_adversarial_lambda_2",
-    "results_ada_corr_penalty_lambda_0.2",
-    "results_ada_corr_penalty_lambda_0.5",
-    "results_ada_corr_penalty_lambda_1",
-    "results_ada_corr_penalty_lambda_2",
-    "results_ada_l1_cv_lambda_0.2",
-    "results_ada_l1_cv_lambda_0.5",
-    "results_ada_l1_cv_lambda_1",
-    "results_ada_l1_cv_lambda_2",
-    "results_ada_tv_lambda_0.2",
-    "results_ada_tv_lambda_0.5",
-    "results_ada_tv_lambda_1",
-    "results_ada_tv_lambda_2",
-    "results_ada_group_entropy_lambda_0.2",
-    "results_ada_group_entropy_lambda_0.5",
-    "results_ada_group_entropy_lambda_1",
-    "results_ada_group_entropy_lambda_2",
+    "results_default_ss_centred_poi2",
 ]
 
 for file_name in file_names:

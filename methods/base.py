@@ -57,7 +57,7 @@ def ss_statistics(visual_features, bs, feat_dim, args):
     visual_features_centered = visual_features - np.mean(
         visual_features, axis=0, keepdims=True
     )
-    u, s, v = np.linalg.svd(
+    _, _, v = np.linalg.svd(
         visual_features_centered,
         full_matrices=False,
     )
@@ -65,15 +65,14 @@ def ss_statistics(visual_features, bs, feat_dim, args):
     # get top eigenvector
     eig_for_indexing = v[0:1]  # [1, C]
 
-    # TODO: use visual_features_centered (in paper) or visual_features (in our previous experiments)
     corrs = np.matmul(
-        eig_for_indexing, np.transpose(visual_features_centered)
+        eig_for_indexing, np.transpose(visual_features)
     )  # [1, bs*n_view], not .abs() yet.
 
     coeff_adjust = np.where(corrs > 0, 1, -1)  # [1, bs*n_view]
     coeff_adjust = np.transpose(coeff_adjust)  # [bs*n_view, 1]
     elementwise = (
-        eig_for_indexing * visual_features_centered * coeff_adjust
+        eig_for_indexing * visual_features * coeff_adjust
     )  # [bs*n_view, C]; if corrs is negative, then adjust its elements to reverse sign
 
     # get contributing indices sorted from low to high
@@ -135,17 +134,7 @@ def generate_view_tensors(input, ss_transform):
 
 
 """
-Backdoor input filtering helpers.
-
-These estimate which images in the poisoned training set are most likely to
-contain the trigger. The common recipe is: compute a per-sample "backdoor score"
-from the model's behavior or representation, then keep the top-k images with the
-largest score.
-
-References:
-- Spectral Signatures: Tran, Li, and Madry, NeurIPS 2018.
-- STRIP: Gao et al., ACSAC 2019.
-- Activation Clustering: Chen et al., NDSS 2019.
+return the indices of the top-k images with the largest score.
 """
 
 
@@ -290,9 +279,19 @@ def find_trigger_channels(
 
     # store votes information
     all_votes = []
-
     # sample a few poisoned/clean images
     dataset = data_loader.dataset
+
+    poisoned_indices = [
+        i
+        for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
+        if train_is_poisoned == 1
+    ]
+    clean_indices = [
+        i
+        for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
+        if train_is_poisoned == 0
+    ]
 
     if args.end2end:
         # use input-filtering methods
@@ -303,18 +302,11 @@ def find_trigger_channels(
             normalize_transform,
             method=getattr(args, "input_filter_method", "spectral_signatures"),
         )
+        is_in_poisoned = [i in poisoned_indices for i in all_indices]
+        print(f"is_in_poisoned: {is_in_poisoned}")
     else:
         # assume access to a few poisoned and clean samples
-        poisoned_indices = [
-            i
-            for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
-            if train_is_poisoned == 1
-        ]
-        clean_indices = [
-            i
-            for i, (_, train_is_poisoned, _, _) in enumerate(dataset)
-            if train_is_poisoned == 0
-        ]
+
         random_poisoned_indices = random.sample(
             poisoned_indices, args.find_channels_from_n_poison_samples
         )
