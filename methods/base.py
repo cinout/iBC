@@ -294,6 +294,8 @@ def find_trigger_channels(
     ]
 
     if args.end2end:
+        torch.cuda.synchronize()
+        start = time.perf_counter()
         # use input-filtering methods
         all_indices = estimate_poisoned_indices(
             args,
@@ -302,8 +304,11 @@ def find_trigger_channels(
             normalize_transform,
             method=getattr(args, "input_filter_method", "spectral_signatures"),
         )
+        torch.cuda.synchronize()
+        end = time.perf_counter()
         is_in_poisoned = [i in poisoned_indices for i in all_indices]
         print(f"is_in_poisoned: {is_in_poisoned}")
+        print(f"Time taken: {end - start:.4f} seconds")
     else:
         # assume access to a few poisoned and clean samples
 
