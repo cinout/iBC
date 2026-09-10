@@ -11,9 +11,9 @@
 ###SBATCH --qos=gpgpudeeplearn
 ###SBATCH --constraint=dlg4|dlg5|dlg6
 
-#SBATCH --job-name="c100_h"
+#SBATCH --job-name="c100_h_s"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:40:00
+#SBATCH --time=0-00:05:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
