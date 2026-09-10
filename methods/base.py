@@ -263,9 +263,10 @@ def estimate_poisoned_indices(
                         optimizer.zero_grad()
                         loss.backward()  # update params of freq_detector
                         optimizer.step()
-                    print(
-                        f"> Frequency Detector training epoch is {epoch}; loss is {loss.item()}"
-                    )
+                    if (epoch + 1) % 50 == 0:
+                        print(
+                            f"> Frequency Detector training epoch is {epoch+1}; loss is {loss.item()}"
+                        )
 
                 save_model(
                     freq_detector.state_dict(),
@@ -1371,7 +1372,11 @@ class CLTrainer:
         training_required = self.args.pretrained_ssl_model == "" or force_training
 
         for epoch in range(self.args.start_epoch, self.args.pretrain_epochs):
-            print(f"... pretraining encoder, epoch: {epoch}")
+            if (
+                (epoch + 1) % self.args.knn_eval_freq == 0
+                or epoch + 1 == self.args.pretrain_epochs
+            ):
+                print(f"... pretraining encoder, epoch: {epoch}")
             losses = AverageMeter()
             cl_losses = AverageMeter()
 
@@ -1564,7 +1569,7 @@ class CLTrainer:
                 poison.ss_transform,
                 self.normalize_transform,
             )
-        print(f"predicted trigger channels are: {contributing_indices}")
+        # print(f"predicted trigger channels are: {contributing_indices}")
 
         ############# KNN
         clean_acc_SSDETECTOR, back_acc_SSDETECTOR = self.knn_monitor_fre(
