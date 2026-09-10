@@ -47,7 +47,7 @@ python -u main_train.py \
     \
     \
     --use_ibc \
-    --find_channels_from_n_poison_samples 2 \
+    --find_channels_from_n_poison_samples 10 \
     --find_channels_from_n_clean_samples 0 \
     --end2end \
     --input_filter_method spectral_signatures \

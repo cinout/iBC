@@ -256,8 +256,8 @@ def estimate_poisoned_indices(
     #         scores = np.linalg.norm(feature_bank - clean_center, axis=1)
     #         for offset, score in enumerate(scores):
     #             score_map[poisoned_indices[offset]] = float(score)
-    # else:
-    #     raise ValueError(f"Unknown input filter method: {method}")
+    else:
+        raise ValueError(f"Unknown input filter method: {method}")
 
     return rank_poisoned_indices_by_score(
         score_map,
@@ -308,6 +308,9 @@ def find_trigger_channels(
         end = time.perf_counter()
         is_in_poisoned = [i in poisoned_indices for i in all_indices]
         print(f"is_in_poisoned: {is_in_poisoned}")
+        print(
+            f"is_in_poisoned_percentage: {sum(is_in_poisoned)} / {len(is_in_poisoned)}%"
+        )
         print(f"Time taken: {end - start:.4f} seconds")
     else:
         # assume access to a few poisoned and clean samples
