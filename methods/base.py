@@ -7,6 +7,7 @@ import torch
 import torch.distributed as dist
 import numpy as np
 from bcu.distillation import distillation
+from frequency_detector import FrequencyDetector, dct2, patching_train
 from mimic.model_train import mimic_model_train
 from mimic.scheduler import weight_scheduler
 from warmup_scheduler import GradualWarmupScheduler
@@ -151,6 +152,7 @@ def rank_poisoned_indices_by_score(score_map, top_k):
 def estimate_poisoned_indices(
     args,
     dataset,
+    probe_dataset,
     backbone,
     normalize_transform,
     method=None,
@@ -184,6 +186,134 @@ def estimate_poisoned_indices(
 
         for offset, score in enumerate(scores):
             score_map[offset] = float(score)
+    if method == "frequency_ensemble":
+        train_probe_freq_detector_loader = DataLoader(
+            probe_dataset,
+            batch_size=64,
+            shuffle=True,
+        )
+        ### Uncomment if needed
+        freq_detector_ensemble = []
+        for ensemble_id in range(args.frequency_ensemble_size):
+            freq_detector = FrequencyDetector(
+                height=args.image_size, width=args.image_size
+            )
+            freq_detector = freq_detector.to(device)
+            if args.pretrained_frequency_model == "":
+                # train from scratch
+                optimizer = torch.optim.Adadelta(
+                    freq_detector.parameters(), lr=0.05, weight_decay=1e-4
+                )
+                criterion = nn.CrossEntropyLoss()
+                freq_detector.train()
+
+                for epoch in range(args.frequency_detector_epochs):
+                    for content in train_probe_freq_detector_loader:
+                        # prepare data in this batch
+                        images_clean = content[0]
+                        images_clean = images_clean.to(device)
+                        images_clean = torch.permute(images_clean, (0, 2, 3, 1))
+                        images_clean = np.array(
+                            images_clean.cpu(), dtype=np.float32
+                        )  # shape: [bs, 32, 32, 3]; value range: [0, 1]
+                        images_poi = np.zeros_like(images_clean)
+                        for i in range(images_clean.shape[0]):
+                            images_poi[i] = patching_train(
+                                images_clean[i],
+                                images_clean,
+                                args.image_size,
+                                ensemble_id,
+                                args.frequency_attack_trigger_ids,
+                                args.complex_gaussian,
+                            )
+
+                        images = np.concatenate(
+                            [images_clean, images_poi], axis=0
+                        )  # shape: [2*bs, 32, 32, 3]; value range: [0, 1]
+                        for i in range(images.shape[0]):
+                            for channel in range(3):
+                                images[i][:, :, channel] = dct2(
+                                    (images[i][:, :, channel] * 255).astype(np.uint8)
+                                )
+                        labels = np.concatenate(
+                            (
+                                np.zeros(images_clean.shape[0]),
+                                np.ones(images_clean.shape[0]),
+                            ),
+                            axis=0,
+                        )
+
+                        idx = np.arange(images.shape[0])
+                        random.shuffle(idx)
+                        images = images[
+                            idx
+                        ]  # shape: [2*bs, 32, 32, 3]; value range: [0, 1]
+                        images = torch.tensor(images, device=device)
+                        images = torch.permute(
+                            images, (0, 3, 1, 2)
+                        )  # shape: [2*bs, 3, 32, 32]
+
+                        labels = labels[idx]  # shape: [2*bs]
+                        labels = torch.tensor(labels, device=device, dtype=torch.long)
+
+                        # obtain loss and update params
+                        output = freq_detector(images)
+                        # [2*bs, 2]
+                        loss = criterion(output, labels)
+                        optimizer.zero_grad()
+                        loss.backward()  # update params of freq_detector
+                        optimizer.step()
+                    print(
+                        f"> Frequency Detector training epoch is {epoch}; loss is {loss.item()}"
+                    )
+
+                save_model(
+                    freq_detector.state_dict(),
+                    filename=os.path.join(
+                        args.saved_path, f"frequency_ensemble_{ensemble_id}.pth.tar"
+                    ),
+                )
+            else:
+                # load model
+                pretrained_state_dict = torch.load(
+                    f"{args.pretrained_frequency_model}_{ensemble_id}.pth.tar",
+                    map_location=device,
+                )
+                freq_detector.load_state_dict(pretrained_state_dict, strict=True)
+            freq_detector_ensemble.append(freq_detector)
+
+        # evaluate
+        score_bank = []
+        with torch.no_grad():
+            for _, content in enumerate(data_loader):
+                images = content[0].to(device)
+                images = torch.permute(images, (0, 2, 3, 1))
+                images = np.array(
+                    images.cpu(), dtype=np.float32
+                )  # shape: [bs, 32, 32, 3]; value range: [0, 1]
+                for i in range(images.shape[0]):
+                    for channel in range(3):
+                        images[i][:, :, channel] = dct2(
+                            (images[i][:, :, channel] * 255).astype(np.uint8)
+                        )
+                images = torch.tensor(images, device=device)
+                images = torch.permute(images, (0, 3, 1, 2))  # shape: [bs, 3, 32, 32]
+                scores_sum = []
+                for ensemble_id in range(args.frequency_ensemble_size):
+                    freq_detector = freq_detector_ensemble[ensemble_id]
+                    freq_detector.eval()
+                    output = freq_detector(
+                        images
+                    )  # [bs, 2], the second element is anomaly score
+                    output = output[:, 1].detach().cpu().tolist()
+                    scores_sum.append(output)
+                # sum up the scores from different ensemble models
+                scores_sum = [sum(x) for x in zip(*scores_sum)]  # shape: [bs, ]
+                score_bank.extend(scores_sum)
+        # store the scores in score_map
+        for offset, score in enumerate(score_bank):
+            score_map[offset] = float(score)
+
     # TODO: implement later
     # elif method == "strip":
     #     # STRIP: a poisoned sample keeps a low-entropy prediction even when
@@ -274,13 +404,14 @@ Return:
 
 
 def find_trigger_channels(
-    args, data_loader, backbone, ss_transform, normalize_transform
+    args, data_loader, probe_loader, backbone, ss_transform, normalize_transform
 ):
 
     # store votes information
     all_votes = []
-    # sample a few poisoned/clean images
+
     dataset = data_loader.dataset
+    probe_dataset = probe_loader.dataset
 
     poisoned_indices = [
         i
@@ -300,6 +431,7 @@ def find_trigger_channels(
         all_indices = estimate_poisoned_indices(
             args,
             dataset,
+            probe_dataset,
             backbone,
             normalize_transform,
             method=getattr(args, "input_filter_method", "spectral_signatures"),
@@ -1427,6 +1559,7 @@ class CLTrainer:
             contributing_indices = find_trigger_channels(
                 self.args,
                 poison.train_pos_loader,  # poisoned training set
+                poison.train_probe_loader,  # probe set
                 backbone,
                 poison.ss_transform,
                 self.normalize_transform,

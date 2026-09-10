@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="img_f_m"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:40:00
+#SBATCH --time=0-03:40:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -49,7 +49,7 @@ python -u main_train.py \
     --find_channels_from_n_poison_samples 10 \
     --find_channels_from_n_clean_samples 0 \
     --end2end \
-    --input_filter_method spectral_signatures \
+    --input_filter_method frequency_ensemble \
     \
     --pretrained_ssl_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/last.pth.tar" \
     --pretrained_linear_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/linear.pth.tar" \

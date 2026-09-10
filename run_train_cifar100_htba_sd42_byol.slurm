@@ -2,18 +2,18 @@
 
 ###SBATCH --partition=gpu-a100
 
-#SBATCH --partition=gpu-a100-short
+###SBATCH --partition=gpu-a100-short
 
 ###SBATCH --partition=feit-gpu-a100
 ###SBATCH --qos=feit
 
-###SBATCH --partition=deeplearn
-###SBATCH --qos=gpgpudeeplearn
-###SBATCH --constraint=dlg4|dlg5|dlg6
+#SBATCH --partition=deeplearn
+#SBATCH --qos=gpgpudeeplearn
+#SBATCH --constraint=dlg4|dlg5|dlg6
 
 #SBATCH --job-name="c100_h_b"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:05:00
+#SBATCH --time=0-03:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -50,7 +50,7 @@ python -u main_train.py \
     --find_channels_from_n_poison_samples 10 \
     --find_channels_from_n_clean_samples 0 \
     --end2end \
-    --input_filter_method spectral_signatures \
+    --input_filter_method frequency_ensemble \
     \
     --pretrained_ssl_model "./Experiments/cifar100_htba_byol_ref_set_sd42/last.pth.tar" \
     --pretrained_linear_model "./Experiments/cifar100_htba_byol_ref_set_sd42/linear.pth.tar" \

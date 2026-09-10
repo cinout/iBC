@@ -260,21 +260,38 @@ parser.add_argument(
     "--input_filter_method",
     type=str,
     default="spectral_signatures",
-    choices=["spectral_signatures", "strip", "activation_clustering"],
+    choices=[
+        "spectral_signatures",
+        "strip",
+        "activation_clustering",
+        "frequency_ensemble",
+    ],
     help="method used to estimate which poisoned training images are most suspicious",
 )
+parser.add_argument("--frequency_detector_epochs", default=500, type=int)
 parser.add_argument(
-    "--strip_repeats",
+    "--complex_gaussian",
+    action="store_true",
+)
+parser.add_argument("--frequency_attack_trigger_ids", type=int, nargs="+", default=2)
+parser.add_argument(
+    "--frequency_ensemble_size",
     type=int,
-    default=8,
-    help="number of perturbations used by the STRIP-style input filter",
+    default=1,
+    help="the number of detectors in the frequency detector ensemble",
 )
-parser.add_argument(
-    "--strip_noise",
-    type=float,
-    default=0.05,
-    help="noise scale used by the STRIP-style input filter",
-)
+# parser.add_argument(
+#     "--strip_repeats",
+#     type=int,
+#     default=8,
+#     help="number of perturbations used by the STRIP-style input filter",
+# )
+# parser.add_argument(
+#     "--strip_noise",
+#     type=float,
+#     default=0.05,
+#     help="noise scale used by the STRIP-style input filter",
+# )
 
 
 """
