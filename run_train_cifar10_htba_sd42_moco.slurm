@@ -50,6 +50,8 @@ python -u main_train.py \
     --find_channels_from_n_clean_samples 0 \
     --end2end \
     --input_filter_method frequency_ensemble \
+    --frequency_attack_trigger_ids 2 10 \
+    --frequency_ensemble_size 3 \
     \
     --pretrained_ssl_model "./Experiments/cifar10_htba_mocov2_ref_set_sd42/last.pth.tar" \
     --pretrained_linear_model "./Experiments/cifar10_htba_mocov2_ref_set_sd42/linear.pth.tar" \
