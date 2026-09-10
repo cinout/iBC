@@ -280,6 +280,12 @@ parser.add_argument(
     default=1,
     help="the number of detectors in the frequency detector ensemble",
 )
+parser.add_argument(
+    "--pretrained_frequency_model",
+    type=str,
+    default="",
+    help="path for pretrained frequency detector (stage 2)",
+)
 # parser.add_argument(
 #     "--strip_repeats",
 #     type=int,
