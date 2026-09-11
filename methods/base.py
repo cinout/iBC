@@ -1564,9 +1564,11 @@ class CLTrainer:
                 clean_val_dataset = poison.test_clean_loader.dataset
                 poi_val_dataset = poison.test_pos_loader.dataset
 
-                #  choose 100 indices that represent 100 different classes of Imagenet-100
                 indices = []
-                for i in range(100):
+                N = 50
+                for i in range(
+                    N
+                ):  #  choose N indices that represent N different classes of Imagenet-100
                     indices.append(11 + i * 50)  # 11, 61, 111, ..., 4911
 
                 clean_subset = Subset(clean_val_dataset, indices)
@@ -1595,7 +1597,7 @@ class CLTrainer:
                     )  # [bs, n_views, 512]
                     vision_features = vision_features.cpu().numpy()
                     print(vision_features.shape)
-                    np.save("visions_for_tsne_100classes.npy", vision_features)
+                    np.save(f"visions_for_tsne_{N}_classes.npy", vision_features)
 
                 exit()
 
