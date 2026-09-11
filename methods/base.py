@@ -1558,6 +1558,47 @@ class CLTrainer:
                 : self.args.removed_channel_num
             ]
         else:
+            # TODO: remove this later
+            if self.args.debug_tsne:
+                # val: 100 classes, each class 50 images
+                clean_val_dataset = poison.test_clean_loader.dataset
+                poi_val_dataset = poison.test_pos_loader.dataset
+
+                #  choose 100 indices that represent 100 different classes of Imagenet-100
+                indices = []
+                for i in range(100):
+                    indices.append(11 + i * 50)  # 11, 61, 111, ..., 4911
+
+                clean_subset = Subset(clean_val_dataset, indices)
+                poi_subset = Subset(poi_val_dataset, indices)
+
+                clean_images = torch.stack([item[0] for item in clean_subset], dim=0)
+                poi_images = torch.stack([item[0] for item in poi_subset], dim=0)
+
+                images = torch.cat([clean_images, poi_images], dim=0)
+                images = images.to(device)
+                views = generate_view_tensors(images, poison.ss_transform)
+                views = views.to(device)
+                bs, n_views, c, h, w = views.shape
+                views = views.reshape(-1, c, h, w)  # [bs*n_views, c, h, w]
+
+                transform = T.Compose(
+                    [
+                        T.Normalize(self.args.mean, self.args.std),
+                    ]
+                )
+                views = transform(views)
+                with torch.no_grad():
+                    vision_features = backbone(views)  # [bs*n_views, 512]
+                    vision_features = vision_features.reshape(
+                        bs, n_views, -1
+                    )  # [bs, n_views, 512]
+                    vision_features = vision_features.cpu().numpy()
+                    print(vision_features.shape)
+                    np.save("visions_for_tsne_100classes.npy", vision_features)
+
+                exit()
+
             contributing_indices = find_trigger_channels(
                 self.args,
                 poison.train_pos_loader,  # poisoned training set
