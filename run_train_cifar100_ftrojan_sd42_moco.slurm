@@ -2,7 +2,9 @@
 
 ###SBATCH --partition=gpu-a100
 
-#SBATCH --partition=gpu-h100
+###SBATCH --partition=gpu-h100
+
+#SBATCH --partition=gpu-l40s
 
 ###SBATCH --partition=gpu-a100-short
 
