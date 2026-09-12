@@ -38,19 +38,10 @@ poison_points = X_2d[n_classes * n_views :]
 
 # Plot
 plt.figure(figsize=(7, 5))
-base_cmap = plt.get_cmap("turbo", n_classes)
-deep_blue = base_cmap(0)
-orange = base_cmap(min(38, n_classes - 1))
+base_cmap = plt.get_cmap("turbo")
 class_positions = np.arange(n_classes)
 class_colors = np.array(
-    [
-        (
-            deep_blue
-            if class_id == 0
-            else orange if class_id >= 38 else plt.get_cmap("turbo")(class_id / 38)
-        )
-        for class_id in class_positions
-    ]
+    [base_cmap(0.8 / 49 * class_id) for class_id in class_positions]
 )
 clean_cmap = ListedColormap(class_colors, name="clean_class_colors")
 
