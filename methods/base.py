@@ -1840,7 +1840,7 @@ class CLTrainer:
         Evaluate poison KNN
         """
 
-        backdoor_val_top1, backdoor_val_total_num = 0.0, 0
+        backdoor_val_top1, acc_on_original_label, backdoor_val_total_num = 0.0, 0.0, 0
 
         backdoor_test_bar = tqdm(test_poi_loader, desc="kNN", disable=hide_progress)
 
@@ -1914,7 +1914,7 @@ class CLTrainer:
 
             backdoor_val_total_num += data.size(0)
             backdoor_val_top1 += (pred_labels[:, 0] == target).float().sum().item()
-            acc_on_original_label = (
+            acc_on_original_label += (
                 (pred_labels[:, 0] == original_label).float().sum().item()
             )  # see if the model predicts the original label instead of the target label after trigger removal
 
