@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="img_f"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:30:00
+#SBATCH --time=0-16:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -42,15 +42,15 @@ python -u main_train.py \
     --magnitude_train 300.0 \
     --magnitude_val 300.0 \
     --dataset imagenet100 \
-    --target_class 26 \
+    --target_class 3 \
     \
     \
     --use_ibc \
-    --find_channels_from_n_poison_samples 2 \
+    --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
-    \
-    --pretrained_ssl_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/last.pth.tar" \
-    --pretrained_linear_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/linear.pth.tar" \
+    # \
+    # --pretrained_ssl_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/last.pth.tar" \
+    # --pretrained_linear_model "./Experiments/imagenet100_ftrojan_mocov2_ref_set_sd42/linear.pth.tar" \
 
     
 

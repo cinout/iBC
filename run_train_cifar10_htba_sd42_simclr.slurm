@@ -13,7 +13,7 @@
 
 #SBATCH --job-name="c10_h"
 #SBATCH --account=punim1623
-#SBATCH --time=0-00:04:00
+#SBATCH --time=0-10:00:00
 
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
@@ -42,15 +42,15 @@ python -u main_train.py \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
     --dataset cifar10 \
-    --target_class 0 \
+    --target_class 1 \
     \
     \
     --use_ibc \
-    --find_channels_from_n_poison_samples 2 \
+    --find_channels_from_n_poison_samples 4 \
     --find_channels_from_n_clean_samples 0 \
     \
-    --pretrained_ssl_model "./Experiments/cifar10_htba_simclr_ref_set_sd42/last.pth.tar" \
-    --pretrained_linear_model "./Experiments/cifar10_htba_simclr_ref_set_sd42/linear.pth.tar" \
+    # --pretrained_ssl_model "./Experiments/cifar10_htba_simclr_ref_set_sd42/last.pth.tar" \
+    # --pretrained_linear_model "./Experiments/cifar10_htba_simclr_ref_set_sd42/linear.pth.tar" \
 
 
 
