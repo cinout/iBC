@@ -1581,7 +1581,9 @@ class CLTrainer:
                 images = images.to(device)
                 views = generate_view_tensors(images, poison.ss_transform)
                 views = views.to(device)
-                bs, n_views, c, h, w = views.shape
+                bs, n_views, c, h, w = (
+                    views.shape
+                )  # first half is clean, second half is poisoned
                 views = views.reshape(-1, c, h, w)  # [bs*n_views, c, h, w]
 
                 transform = T.Compose(

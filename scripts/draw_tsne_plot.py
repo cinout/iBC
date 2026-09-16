@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib.colors import LinearSegmentedColormap, Normalize
 
 vision_features = np.load("scripts/visions_for_tsne_50_classes.npy")
 
@@ -41,9 +41,11 @@ plt.figure(figsize=(7, 5))
 base_cmap = plt.get_cmap("turbo")
 class_positions = np.arange(n_classes)
 class_colors = np.array(
-    [base_cmap(0.8 / 49 * class_id) for class_id in class_positions]
+    [base_cmap(0.6 / 49 * class_id + 0.2) for class_id in class_positions]
 )
-clean_cmap = ListedColormap(class_colors, name="clean_class_colors")
+clean_cmap = LinearSegmentedColormap.from_list(
+    "clean_class_colors", class_colors, N=256
+)
 
 # Give each clean class its own color. A colorbar scales better than a 50-entry legend.
 for class_id in range(n_classes):
@@ -58,40 +60,42 @@ for class_id in range(n_classes):
     )
 
 # # Use dark red for every poisoned class. The x marker distinguishes status.
-# for class_id in range(n_classes):
-#     start = class_id * n_views
-#     end = start + n_views
-#     plt.scatter(
-#         poison_points[start:end, 0],
-#         poison_points[start:end, 1],
-#         color="darkred",
-#         marker="x",
-#         s=3,
-#         alpha=0.8,
-#     )
+for class_id in range(n_classes):
+    start = class_id * n_views
+    end = start + n_views
+    plt.scatter(
+        poison_points[start:end, 0],
+        poison_points[start:end, 1],
+        color="darkred",
+        marker="s",
+        s=2,
+        alpha=0.8,
+    )
 
-clean_scatter = plt.scatter([], [], color="black", marker=".", s=2, label="Clean")
-poison_scatter = plt.scatter([], [], color="black", marker="x", s=3, label="Poisoned")
+clean_scatter = plt.scatter([], [], color="green", marker=".", s=20, label="Clean")
+poison_scatter = plt.scatter(
+    [], [], color="darkred", marker="s", s=20, label="Poisoned"
+)
 plt.legend(
     handles=[clean_scatter, poison_scatter],
     loc="best",
-    fontsize=8,
+    fontsize=12,
     framealpha=0.8,
 )
 
 clean_mappable = plt.cm.ScalarMappable(
-    norm=BoundaryNorm(np.arange(n_classes + 1) - 0.5, n_classes),
+    norm=Normalize(vmin=1, vmax=n_classes),
     cmap=clean_cmap,
 )
-clean_mappable.set_array(np.arange(n_classes))
+clean_mappable.set_array(np.arange(n_classes) + 1)
 colorbar = plt.colorbar(
     clean_mappable,
     ax=plt.gca(),
     pad=0.02,
 )
-colorbar.set_label("Clean images class spectrum")
+colorbar.set_label("clean-image classes spectrum")
 colorbar.set_ticks(
-    [int(tick) for tick in np.linspace(0, n_classes - 1, min(n_classes, 10))]
+    [int(tick) for tick in np.linspace(1, n_classes, min(n_classes, 10))]
 )
 plt.xticks([])  # remove x ticks
 plt.yticks([])  # remove y ticks
