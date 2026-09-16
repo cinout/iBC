@@ -698,15 +698,24 @@ def main(args):
         knn_back_asr_list = []
         linear_clean_acc_list = []
         linear_back_asr_list = []
+        knn_original_label_acc_list = []
+        linear_original_label_acc_list = []
 
         for _ in range(1 if args.end2end else 10):
-            knn_clean, knn_back, linear_clean, linear_back = (
-                trainer.trigger_channel_removal(model, poison, trained_linear)
-            )
+            (
+                knn_clean,
+                knn_back,
+                knn_original_label_acc,
+                linear_clean,
+                linear_back,
+                linear_original_label_acc,
+            ) = trainer.trigger_channel_removal(model, poison, trained_linear)
             knn_clean_acc_list.append(knn_clean)
             knn_back_asr_list.append(knn_back)
+            knn_original_label_acc_list.append(knn_original_label_acc)
             linear_clean_acc_list.append(linear_clean)
             linear_back_asr_list.append(linear_back)
+            linear_original_label_acc_list.append(linear_original_label_acc)
         print("============= Overall =============")
         print(
             f"knn_clean_acc: {np.round(np.mean(knn_clean_acc_list),1)}±{np.round(np.std(knn_clean_acc_list),1)}"
@@ -715,10 +724,16 @@ def main(args):
             f"knn_back_asr: {np.round(np.mean(knn_back_asr_list),1)}±{np.round(np.std(knn_back_asr_list),1)}"
         )
         print(
+            f"knn_original_label_acc: {np.round(np.mean(knn_original_label_acc_list),1)}±{np.round(np.std(knn_original_label_acc_list),1)}"
+        )
+        print(
             f"linear_clean_acc: {np.round(np.mean(linear_clean_acc_list),1)}±{np.round(np.std(linear_clean_acc_list),1)}"
         )
         print(
             f"linear_back_asr: {np.round(np.mean(linear_back_asr_list),1)}±{np.round(np.std(linear_back_asr_list),1)}"
+        )
+        print(
+            f"linear_original_label_acc: {np.round(np.mean(linear_original_label_acc_list),1)}±{np.round(np.std(linear_original_label_acc_list),1)}"
         )
 
     """

@@ -1657,7 +1657,7 @@ class CLTrainer:
             )
 
         ############# KNN
-        clean_acc_SSDETECTOR, back_acc_SSDETECTOR, original_label_acc = (
+        clean_acc_SSDETECTOR, back_acc_SSDETECTOR, knn_original_label_acc = (
             self.knn_monitor_fre(
                 backbone,
                 poison.memory_loader,
@@ -1671,7 +1671,7 @@ class CLTrainer:
         )
 
         print(
-            f"In kNN classification, by replacing top-{self.args.removed_channel_num} channels, clean acc: {clean_acc_SSDETECTOR:.1f} | back acc: {back_acc_SSDETECTOR:.1f} | original label acc: {original_label_acc:.1f}"
+            f"In kNN classification, by replacing top-{self.args.removed_channel_num} channels, clean acc: {clean_acc_SSDETECTOR:.1f} | back acc: {back_acc_SSDETECTOR:.1f} | original label acc: {knn_original_label_acc:.1f}"
         )
 
         ########### Linear Probe
@@ -1705,7 +1705,14 @@ class CLTrainer:
             f"In linear probe, by replacing {self.args.removed_channel_num} channels, the ACC on clean val is: {np.round(clean_acc1,1)}, the ASR on poisoned val is: {np.round(poison_acc1,1)}, the ACC on original label is: {np.round(poison_original_label_acc1,1)}"
         )
 
-        return (clean_acc_SSDETECTOR, back_acc_SSDETECTOR, clean_acc1, poison_acc1)
+        return (
+            clean_acc_SSDETECTOR,
+            back_acc_SSDETECTOR,
+            knn_original_label_acc,
+            clean_acc1,
+            poison_acc1,
+            poison_original_label_acc1,
+        )
 
     """
     kNN classifier evaluation (label prediction).
