@@ -1,0 +1,3 @@
+sbatch run_train_cifar10_htba_sd42_simclr.slurm
+sbatch run_train_cifar100_htba_sd42_byol.slurm
+sbatch run_train_imagenet100_ftrojan_sd42_moco.slurm
