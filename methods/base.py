@@ -315,7 +315,7 @@ def estimate_poisoned_indices(
         for offset, score in enumerate(score_bank):
             score_map[offset] = float(score)
 
-    # TODO: implement later
+    ### implement later
     # elif method == "strip":
     #     # STRIP: a poisoned sample keeps a low-entropy prediction even when
     #     # repeatedly perturbed, because the trigger dominates the decision.
@@ -581,6 +581,28 @@ Helper function for function eval_linear_classifier()
 """
 
 
+def produces_evaluation_results_for_poisoned_val(
+    linear,
+    output,
+    target,
+    original_label,
+    acc1_accumulator,
+    original_label_accumulator,
+    total_count,
+):
+    output = linear(output)
+    _, pred = output.topk(
+        1, 1, True, True
+    )  # k=1, dim=1, largest, sorted; pred is the indices of largest class
+    # pred.shape: [bs, k=1]
+    pred = pred.squeeze(1)  # shape: [bs, ]
+
+    total_count += target.shape[0]
+    acc1_accumulator += (pred == target).float().sum().item()
+    original_label_accumulator += (pred == original_label).float().sum().item()
+    return acc1_accumulator, original_label_accumulator, total_count
+
+
 def produces_evaluation_results(linear, output, target, acc1_accumulator, total_count):
     output = linear(output)
     _, pred = output.topk(
@@ -614,6 +636,7 @@ def eval_linear_classifier(
     with torch.no_grad():
 
         acc1_accumulator = 0.0
+        original_label_accumulator = 0.0
         total_count = 0
 
         for i, content in enumerate(val_loader):
@@ -637,6 +660,7 @@ def eval_linear_classifier(
 
                 images = images[valid_indices]
                 target = target[valid_indices]
+                original_label = original_label[valid_indices]
 
             # compute output
             output = backbone(images)
@@ -670,11 +694,30 @@ def eval_linear_classifier(
                 else:
                     output[:, indices_toremove] = 0.0
 
-            acc1_accumulator, total_count = produces_evaluation_results(
-                linear, output, target, acc1_accumulator, total_count
-            )
+            if val_mode == "poison":
+                acc1_accumulator, original_label_accumulator, total_count = (
+                    produces_evaluation_results_for_poisoned_val(
+                        linear,
+                        output,
+                        target,
+                        original_label,
+                        acc1_accumulator,
+                        original_label_accumulator,
+                        total_count,
+                    )
+                )
 
-        return acc1_accumulator / total_count * 100.0
+            elif val_mode == "clean":
+                acc1_accumulator, total_count = produces_evaluation_results(
+                    linear, output, target, acc1_accumulator, total_count
+                )
+        if val_mode == "poison":
+            return (
+                acc1_accumulator / total_count * 100.0,
+                original_label_accumulator / total_count * 100.0,
+            )
+        elif val_mode == "clean":
+            return acc1_accumulator / total_count * 100.0
 
 
 """
@@ -1000,7 +1043,7 @@ class CLTrainer:
         )
 
         # unimpacted kNN performance
-        clean_acc, back_acc = self.knn_monitor_fre(
+        clean_acc, back_acc, _ = self.knn_monitor_fre(
             backbone,
             poison.memory_loader,
             poison.test_clean_loader,
@@ -1140,7 +1183,7 @@ class CLTrainer:
             clean_channel_means=self.clean_channel_means,
             clean_channel_stds=self.clean_channel_stds,
         )
-        poison_acc1 = eval_linear_classifier(
+        poison_acc1, poison_original_label_acc1 = eval_linear_classifier(
             poison.test_pos_loader,
             backbone,
             linear,
@@ -1154,7 +1197,7 @@ class CLTrainer:
         )
 
         print(
-            f"for linear classifier, the ACC on clean val is: {np.round(clean_acc1,1)}, the ASR on poisoned val is: {np.round(poison_acc1,1)}"
+            f"for linear classifier, the ACC on clean val is: {np.round(clean_acc1,1)}, the ASR on poisoned val is: {np.round(poison_acc1,1)}, the ACC on original label is: {np.round(poison_original_label_acc1,1)}"
         )
 
         return linear
@@ -1480,7 +1523,7 @@ class CLTrainer:
                 model.eval()
                 backbone = extract_backbone(self.args.method, model, self.args.arch)
 
-                clean_acc, back_acc = self.knn_monitor_fre(
+                clean_acc, back_acc, original_label_acc = self.knn_monitor_fre(
                     backbone,
                     poison.memory_loader,
                     test_clean_loader,
@@ -1489,11 +1532,12 @@ class CLTrainer:
                     classes=self.args.num_classes,
                 )
                 print(
-                    "[{}-epoch] time:{:.1f} | clean acc: {:.1f} | back acc: {:.1f} | loss:{:.3f} | cl_loss:{:.3f}".format(
+                    "[{}-epoch] time:{:.1f} | clean acc: {:.1f} | back acc: {:.1f} | original label acc: {:.1f} | loss:{:.3f} | cl_loss:{:.3f}".format(
                         epoch + 1,
                         time.time() - start,
                         clean_acc,
                         back_acc,
+                        original_label_acc,
                         losses.avg,
                         cl_losses.avg,
                     )
@@ -1558,50 +1602,50 @@ class CLTrainer:
                 : self.args.removed_channel_num
             ]
         else:
-            # TODO: remove this later
-            if self.args.debug_tsne:
-                # val: 100 classes, each class 50 images
-                clean_val_dataset = poison.test_clean_loader.dataset
-                poi_val_dataset = poison.test_pos_loader.dataset
+            # #  for plot tsne
+            # if self.args.debug_tsne:
+            #     # val: 100 classes, each class 50 images
+            #     clean_val_dataset = poison.test_clean_loader.dataset
+            #     poi_val_dataset = poison.test_pos_loader.dataset
 
-                indices = []
-                N = 50
-                for i in range(
-                    N
-                ):  #  choose N indices that represent N different classes of Imagenet-100
-                    indices.append(11 + i * 50)  # 11, 61, 111, ..., 4911
+            #     indices = []
+            #     N = 50
+            #     for i in range(
+            #         N
+            #     ):  #  choose N indices that represent N different classes of Imagenet-100
+            #         indices.append(11 + i * 50)  # 11, 61, 111, ..., 4911
 
-                clean_subset = Subset(clean_val_dataset, indices)
-                poi_subset = Subset(poi_val_dataset, indices)
+            #     clean_subset = Subset(clean_val_dataset, indices)
+            #     poi_subset = Subset(poi_val_dataset, indices)
 
-                clean_images = torch.stack([item[0] for item in clean_subset], dim=0)
-                poi_images = torch.stack([item[0] for item in poi_subset], dim=0)
+            #     clean_images = torch.stack([item[0] for item in clean_subset], dim=0)
+            #     poi_images = torch.stack([item[0] for item in poi_subset], dim=0)
 
-                images = torch.cat([clean_images, poi_images], dim=0)
-                images = images.to(device)
-                views = generate_view_tensors(images, poison.ss_transform)
-                views = views.to(device)
-                bs, n_views, c, h, w = (
-                    views.shape
-                )  # first half is clean, second half is poisoned
-                views = views.reshape(-1, c, h, w)  # [bs*n_views, c, h, w]
+            #     images = torch.cat([clean_images, poi_images], dim=0)
+            #     images = images.to(device)
+            #     views = generate_view_tensors(images, poison.ss_transform)
+            #     views = views.to(device)
+            #     bs, n_views, c, h, w = (
+            #         views.shape
+            #     )  # first half is clean, second half is poisoned
+            #     views = views.reshape(-1, c, h, w)  # [bs*n_views, c, h, w]
 
-                transform = T.Compose(
-                    [
-                        T.Normalize(self.args.mean, self.args.std),
-                    ]
-                )
-                views = transform(views)
-                with torch.no_grad():
-                    vision_features = backbone(views)  # [bs*n_views, 512]
-                    vision_features = vision_features.reshape(
-                        bs, n_views, -1
-                    )  # [bs, n_views, 512]
-                    vision_features = vision_features.cpu().numpy()
-                    print(vision_features.shape)
-                    np.save(f"visions_for_tsne_{N}_classes.npy", vision_features)
+            #     transform = T.Compose(
+            #         [
+            #             T.Normalize(self.args.mean, self.args.std),
+            #         ]
+            #     )
+            #     views = transform(views)
+            #     with torch.no_grad():
+            #         vision_features = backbone(views)  # [bs*n_views, 512]
+            #         vision_features = vision_features.reshape(
+            #             bs, n_views, -1
+            #         )  # [bs, n_views, 512]
+            #         vision_features = vision_features.cpu().numpy()
+            #         print(vision_features.shape)
+            #         np.save(f"visions_for_tsne_{N}_classes.npy", vision_features)
 
-                exit()
+            #     exit()
 
             contributing_indices = find_trigger_channels(
                 self.args,
@@ -1611,22 +1655,23 @@ class CLTrainer:
                 poison.ss_transform,
                 self.normalize_transform,
             )
-        # print(f"predicted trigger channels are: {contributing_indices}")
 
         ############# KNN
-        clean_acc_SSDETECTOR, back_acc_SSDETECTOR = self.knn_monitor_fre(
-            backbone,
-            poison.memory_loader,
-            poison.test_clean_loader,
-            poison.test_pos_loader,
-            self.args,
-            classes=self.args.num_classes,
-            use_SS_detector=True,
-            contributing_indices=contributing_indices,
+        clean_acc_SSDETECTOR, back_acc_SSDETECTOR, original_label_acc = (
+            self.knn_monitor_fre(
+                backbone,
+                poison.memory_loader,
+                poison.test_clean_loader,
+                poison.test_pos_loader,
+                self.args,
+                classes=self.args.num_classes,
+                use_SS_detector=True,
+                contributing_indices=contributing_indices,
+            )
         )
 
         print(
-            f"In kNN classification, by replacing top-{self.args.removed_channel_num} channels, clean acc: {clean_acc_SSDETECTOR:.1f} | back acc: {back_acc_SSDETECTOR:.1f}"
+            f"In kNN classification, by replacing top-{self.args.removed_channel_num} channels, clean acc: {clean_acc_SSDETECTOR:.1f} | back acc: {back_acc_SSDETECTOR:.1f} | original label acc: {original_label_acc:.1f}"
         )
 
         ########### Linear Probe
@@ -1643,7 +1688,7 @@ class CLTrainer:
             clean_channel_means=self.clean_channel_means,
             clean_channel_stds=self.clean_channel_stds,
         )
-        poison_acc1 = eval_linear_classifier(
+        poison_acc1, poison_original_label_acc1 = eval_linear_classifier(
             poison.test_pos_loader,
             backbone,
             trained_linear,
@@ -1657,7 +1702,7 @@ class CLTrainer:
         )
 
         print(
-            f"In linear probe, by replacing {self.args.removed_channel_num} channels, the ACC on clean val is: {np.round(clean_acc1,1)}, the ASR on poisoned val is: {np.round(poison_acc1,1)}"
+            f"In linear probe, by replacing {self.args.removed_channel_num} channels, the ACC on clean val is: {np.round(clean_acc1,1)}, the ASR on poisoned val is: {np.round(poison_acc1,1)}, the ACC on original label is: {np.round(poison_original_label_acc1,1)}"
         )
 
         return (clean_acc_SSDETECTOR, back_acc_SSDETECTOR, clean_acc1, poison_acc1)
@@ -1827,6 +1872,7 @@ class CLTrainer:
 
             data = data[valid_indices]
             target = target[valid_indices]
+            original_label = original_label[valid_indices]
 
             with torch.no_grad():
                 feature = net(data)
@@ -1868,10 +1914,14 @@ class CLTrainer:
 
             backdoor_val_total_num += data.size(0)
             backdoor_val_top1 += (pred_labels[:, 0] == target).float().sum().item()
+            acc_on_original_label = (
+                (pred_labels[:, 0] == original_label).float().sum().item()
+            )  # see if the model predicts the original label instead of the target label after trigger removal
 
         return (
             clean_val_top1 / clean_val_total_num * 100,
             backdoor_val_top1 / backdoor_val_total_num * 100,
+            acc_on_original_label / backdoor_val_total_num * 100,
         )
 
     """
