@@ -42,7 +42,7 @@ python -u main_train.py \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
     --dataset cifar10 \
-    --target_class 1 \
+    --target_class 2 \
     \
     \
     --use_ibc \

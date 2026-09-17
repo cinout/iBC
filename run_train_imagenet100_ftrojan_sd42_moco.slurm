@@ -42,7 +42,7 @@ python -u main_train.py \
     --magnitude_train 300.0 \
     --magnitude_val 300.0 \
     --dataset imagenet100 \
-    --target_class 3 \
+    --target_class 4 \
     \
     \
     --use_ibc \
