@@ -43,7 +43,7 @@ python -u main_train.py \
     --magnitude_train 50.0 \
     --magnitude_val 100.0 \
     --dataset cifar100 \
-    --target_class 3 \
+    --target_class 4 \
     \
     --use_ibc \
     --find_channels_from_n_poison_samples 4 \

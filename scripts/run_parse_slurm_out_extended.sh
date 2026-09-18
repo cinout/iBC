@@ -1,1 +1,1 @@
-python3 scripts/parse_slurm_out_extended.py results/default_ss_centred_poi2 -o results/results_default_ss_centred_poi2.json -f json
+python3 scripts/parse_slurm_out_extended.py results/original_label_acc_after_cleanse -o results/results_original_label_acc_after_cleanse.json -f json

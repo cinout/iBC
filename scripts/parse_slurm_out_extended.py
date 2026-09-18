@@ -45,12 +45,16 @@ def parse_file(path: str) -> Dict[str, Optional[object]]:
         "trigger_type": None,
         "clean_acc_800": None,
         "back_acc_800": None,
+        "knn_original_label_acc_800": None,
         "linear_ACC": None,
         "linear_ASR": None,
+        "linear_original_label_acc_800": None,
         "knn_clean_acc": None,
         "knn_back_asr": None,
+        "knn_original_label_acc": None,
         "linear_clean_acc": None,
         "linear_back_asr": None,
+        "linear_original_label_acc": None,
     }
 
     # simple key: value lines
@@ -65,23 +69,25 @@ def parse_file(path: str) -> Dict[str, Optional[object]]:
 
     # [800-epoch] line
     m800 = re.search(
-        r"\[\s*800-epoch\s*\].*?clean acc:\s*([0-9]+(?:\.[0-9]+)?).*?back acc:\s*([0-9]+(?:\.[0-9]+)?)",
+        r"\[\s*800-epoch\s*\].*?clean acc:\s*([0-9]+(?:\.[0-9]+)?).*?back acc:\s*([0-9]+(?:\.[0-9]+)?).*?original label acc:\s*([0-9]+(?:\.[0-9]+)?)",
         text,
         flags=re.IGNORECASE | re.DOTALL,
     )
     if m800:
         out["clean_acc_800"] = float(m800.group(1))
         out["back_acc_800"] = float(m800.group(2))
+        out["knn_original_label_acc_800"] = float(m800.group(3))
 
     # linear classifier immediate report (before replacements)
     mlin = re.search(
-        r"for linear classifier.*?ACC on clean val is:\s*([0-9]+(?:\.[0-9]+)?).*?ASR on poisoned val is:\s*([0-9]+(?:\.[0-9]+)?)",
+        r"for linear classifier.*?ACC on clean val is:\s*([0-9]+(?:\.[0-9]+)?).*?ASR on poisoned val is:\s*([0-9]+(?:\.[0-9]+)?).*?ACC on original label is:\s*([0-9]+(?:\.[0-9]+)?)",
         text,
         flags=re.IGNORECASE | re.DOTALL,
     )
     if mlin:
         out["linear_ACC"] = float(mlin.group(1))
         out["linear_ASR"] = float(mlin.group(2))
+        out["linear_original_label_acc_800"] = float(mlin.group(3))
 
     # overall summary lines like: knn_clean_acc: 54.9±0.3
     def extract_mean_std_str(keyname: str) -> Optional[str]:
@@ -98,8 +104,10 @@ def parse_file(path: str) -> Dict[str, Optional[object]]:
 
     out["knn_clean_acc"] = extract_mean_std_str("knn_clean_acc")
     out["knn_back_asr"] = extract_mean_std_str("knn_back_asr")
+    out["knn_original_label_acc"] = extract_mean_std_str("knn_original_label_acc")
     out["linear_clean_acc"] = extract_mean_std_str("linear_clean_acc")
     out["linear_back_asr"] = extract_mean_std_str("linear_back_asr")
+    out["linear_original_label_acc"] = extract_mean_std_str("linear_original_label_acc")
 
     return out
 
@@ -124,12 +132,16 @@ def write_csv(results: Dict[str, Dict[str, Optional[object]]], outpath: str) -> 
         "trigger_type",
         "clean_acc_800",
         "back_acc_800",
+        "knn_original_label_acc_800",
         "linear_ACC",
         "linear_ASR",
+        "linear_original_label_acc_800",
         "knn_clean_acc",
         "knn_back_asr",
+        "knn_original_label_acc",
         "linear_clean_acc",
         "linear_back_asr",
+        "linear_original_label_acc",
     ]
     with open(outpath, "w", newline="", encoding="utf-8") as cf:
         writer = csv.DictWriter(cf, fieldnames=fieldnames)
